@@ -1,0 +1,193 @@
+================================================================================
+  CONFIGURACIÓN DE ENDPOINTS PARA REPORTES CON FILTROS TEMPORALES
+================================================================================
+
+NUEVAS FUNCIONALIDADES AGREGADAS:
+---------------------------------
+
+1. SELECTOR DE TIPO DE REPORTE:
+   - Cartera Vencida CIU
+   - Cartera Vencida Impuesto
+
+2. SELECTOR DE FILTRO TEMPORAL:
+   - Por Año: Selecciona un año específico de los últimos 40 años
+   - Por Rango de Fechas: Selecciona fecha de inicio y fecha fin
+
+3. EXPORTACIÓN INTELIGENTE:
+   - Maneja automáticamente paginación del backend
+   - Obtiene TODOS los registros (no solo la página actual)
+   - Nombre de archivo descriptivo según filtros aplicados
+
+
+ENDPOINTS REQUERIDOS EN DJANGO:
+-------------------------------
+
+1. CARTERA VENCIDA CIU - POR AÑO:
+   GET /api/ct_vencida/{año}/
+   Ejemplo: GET /api/ct_vencida/2024/
+   
+2. CARTERA VENCIDA CIU - POR RANGO DE FECHAS:
+   GET /api/ct_vencida/rango/?fecha_inicio={YYYY-MM-DD}&fecha_fin={YYYY-MM-DD}
+   Ejemplo: GET /api/ct_vencida/rango/?fecha_inicio=2024-01-01&fecha_fin=2024-12-31
+
+3. CARTERA VENCIDA IMPUESTO - POR AÑO:
+   GET /api/ct_vencida_impuesto/{año}/
+   Ejemplo: GET /api/ct_vencida_impuesto/2024/
+
+4. CARTERA VENCIDA IMPUESTO - POR RANGO DE FECHAS:
+   GET /api/ct_vencida_impuesto/rango/?fecha_inicio={YYYY-MM-DD}&fecha_fin={YYYY-MM-DD}
+   Ejemplo: GET /api/ct_vencida_impuesto/rango/?fecha_inicio=2024-01-01&fecha_fin=2024-12-31
+
+
+HEADERS REQUERIDOS:
+------------------
+x-api-key: ClaveSecreta123
+
+
+FORMATO DE RESPUESTA:
+--------------------
+
+Opción 1 - CON PAGINACIÓN (Recomendado para muchos registros):
+{
+  "count": 24306,
+  "next": "http://localhost:8000/api/ct_vencida/2024/?page=2",
+  "previous": null,
+  "results": [
+    { "campo1": "valor1", "campo2": "valor2", ... },
+    { "campo1": "valor1", "campo2": "valor2", ... },
+    ...
+  ]
+}
+
+Opción 2 - SIN PAGINACIÓN (Solo para pocos registros):
+[
+  { "campo1": "valor1", "campo2": "valor2", ... },
+  { "campo1": "valor1", "campo2": "valor2", ... },
+  ...
+]
+
+NOTA: El frontend maneja automáticamente ambos formatos y obtiene todos
+      los registros si hay paginación.
+
+
+EJEMPLO DE VISTA EN DJANGO (views.py):
+--------------------------------------
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 5000
+    page_size_query_param = 'page_size'
+    max_page_size = 10000
+
+@api_view(['GET'])
+def cartera_vencida_por_anio(request, anio):
+    # Validar x-api-key
+    api_key = request.headers.get('x-api-key')
+    if api_key != 'ClaveSecreta123':
+        return Response({'error': 'Invalid API key'}, status=403)
+    
+    # Consultar datos del año
+    queryset = CarteraVencida.objects.filter(anio=anio)
+    
+    # Paginar
+    paginator = StandardResultsSetPagination()
+    result_page = paginator.paginate_queryset(queryset, request)
+    
+    # Serializar (o convertir a diccionario)
+    data = list(result_page.values())
+    
+    return paginator.get_paginated_response(data)
+
+@api_view(['GET'])
+def cartera_vencida_por_rango(request):
+    # Validar x-api-key
+    api_key = request.headers.get('x-api-key')
+    if api_key != 'ClaveSecreta123':
+        return Response({'error': 'Invalid API key'}, status=403)
+    
+    # Obtener parámetros
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    if not fecha_inicio or not fecha_fin:
+        return Response({'error': 'Se requieren fecha_inicio y fecha_fin'}, status=400)
+    
+    # Consultar datos del rango
+    queryset = CarteraVencida.objects.filter(
+        fecha__gte=fecha_inicio,
+        fecha__lte=fecha_fin
+    )
+    
+    # Paginar
+    paginator = StandardResultsSetPagination()
+    result_page = paginator.paginate_queryset(queryset, request)
+    
+    # Serializar
+    data = list(result_page.values())
+    
+    return paginator.get_paginated_response(data)
+
+
+URLS DE DJANGO (urls.py):
+-------------------------
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    # Cartera Vencida CIU
+    path('api/ct_vencida/<int:anio>/', views.cartera_vencida_por_anio),
+    path('api/ct_vencida/rango/', views.cartera_vencida_por_rango),
+    
+    # Cartera Vencida Impuesto
+    path('api/ct_vencida_impuesto/<int:anio>/', views.cartera_vencida_impuesto_por_anio),
+    path('api/ct_vencida_impuesto/rango/', views.cartera_vencida_impuesto_por_rango),
+]
+
+
+VARIABLES DE ENTORNO (.env):
+---------------------------
+VITE_API_BASE_URL=http://localhost:8000
+VITE_API_CT_VENCIDA=/api/ct_vencida
+VITE_API_CT_VENCIDA_IMPUESTO=/api/ct_vencida_impuesto
+VITE_API_TOKEN=ClaveSecreta123
+
+
+EJEMPLOS DE NOMBRES DE ARCHIVO EXCEL GENERADOS:
+-----------------------------------------------
+- Cartera_Vencida_Ciu_2024_06-11-2025.xlsx
+- Cartera_Vencida_Ciu_2024-01-01_a_2024-12-31_06-11-2025.xlsx
+- Cartera_Vencida_Impuesto_2023_06-11-2025.xlsx
+- Cartera_Vencida_Impuesto_2023-06-01_a_2023-12-31_06-11-2025.xlsx
+
+
+NOTAS IMPORTANTES:
+-----------------
+1. El frontend automáticamente detecta y maneja la paginación de DRF
+2. Si tienes 24,306 registros, el frontend hará múltiples peticiones
+   para obtener TODOS los registros antes de mostrarlos
+3. La exportación a Excel incluye TODOS los registros, no solo la página visible
+4. Los logs en consola muestran el progreso de carga de páginas
+
+
+SOLUCIÓN DE PROBLEMAS:
+---------------------
+Q: No aparecen todos los registros
+A: Verifica que tu endpoint de Django esté paginando correctamente y que
+   la respuesta incluya los campos "count", "next", "previous", "results"
+
+Q: Error al consultar por rango de fechas
+A: Asegúrate de que el endpoint /rango/ esté configurado y acepte
+   los parámetros fecha_inicio y fecha_fin en formato YYYY-MM-DD
+
+Q: Excel solo tiene registros de una página
+A: El código ya está corregido para obtener todas las páginas. Verifica
+   los logs en consola del navegador para ver si está obteniendo todas.
+
+================================================================================
+Fecha: Noviembre 2025
+================================================================================

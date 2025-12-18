@@ -1,0 +1,128 @@
+================================================================================
+  INSTRUCCIONES PARA EJECUTAR EL PROYECTO EN OTRO EQUIPO
+================================================================================
+
+REQUISITOS PREVIOS:
+------------------
+1. Node.js (versión 18 o superior)
+   Descargar de: https://nodejs.org/
+
+2. NPM (se instala automáticamente con Node.js)
+
+3. Git (opcional, si vas a clonar el repositorio)
+
+
+PASOS PARA INSTALAR Y EJECUTAR:
+-------------------------------
+
+1. CLONAR O COPIAR EL PROYECTO
+   - Si usas Git:
+     git clone [URL_DEL_REPOSITORIO]
+     cd free-react-tailwind-admin-dashboard-main version 1
+   
+   - Si copias manualmente:
+     Copia toda la carpeta del proyecto al nuevo equipo
+
+
+2. INSTALAR DEPENDENCIAS
+   Abre una terminal en la carpeta del proyecto y ejecuta:
+   
+   npm install
+   
+   Esto instalará todas las librerías necesarias que están en package.json
+
+
+3. CONFIGURAR VARIABLES DE ENTORNO
+   Crea un archivo llamado .env en la raíz del proyecto con:
+   
+   VITE_API_BASE_URL=http://localhost:8000
+   VITE_API_CT_VENCIDA=/api/ct_vencida
+   VITE_API_TOKEN=ClaveSecreta123
+   
+   Nota: Ajusta estos valores según tu servidor Django
+
+
+4. EJECUTAR EN MODO DESARROLLO
+   
+   npm run dev
+   
+   El proyecto se abrirá en: http://localhost:5173
+
+
+5. COMPILAR PARA PRODUCCIÓN (opcional)
+   
+   npm run build
+   
+   Los archivos compilados estarán en la carpeta: dist/
+
+
+COMANDOS ÚTILES:
+---------------
+npm run dev      - Ejecutar en modo desarrollo
+npm run build    - Compilar para producción
+npm run preview  - Vista previa de la compilación
+npm run lint     - Verificar código con ESLint
+
+
+DEPENDENCIAS PRINCIPALES INSTALADAS:
+------------------------------------
+✓ React 19.0.0
+✓ Vite 6.1.0 (Build tool)
+✓ Tailwind CSS 4.0.8
+✓ TypeScript 5.7.2
+✓ axios 1.13.0 (Para conectar con API Django)
+✓ primereact 10.9.7 (Tablas con filtros)
+✓ xlsx 0.18.5 (Exportar a Excel)
+
+
+SOLUCIÓN DE PROBLEMAS:
+---------------------
+- Si hay errores al instalar: elimina la carpeta node_modules y el archivo 
+  package-lock.json, luego ejecuta "npm install" nuevamente
+
+- Si el puerto 5173 está ocupado: Vite usará automáticamente otro puerto
+
+- Si no conecta con la API Django: verifica que el servidor Django esté 
+  corriendo en http://localhost:8000 y que CORS esté configurado
+
+
+CONFIGURACIÓN DE DJANGO (Backend):
+----------------------------------
+El proyecto React se conecta a una API Django. Asegúrate de que en Django:
+
+1. Tengas instalado: django-cors-headers
+2. En settings.py agregues:
+   
+   INSTALLED_APPS = [
+       ...
+       'corsheaders',
+   ]
+   
+   MIDDLEWARE = [
+       'corsheaders.middleware.CorsMiddleware',
+       ...
+   ]
+   
+   CORS_ALLOWED_ORIGINS = [
+       'http://localhost:5173',
+   ]
+
+3. Tu API debe aceptar el header: x-api-key
+
+
+ESTRUCTURA DEL PROYECTO:
+------------------------
+src/
+  ├── pages/Reporte/MyReporte.tsx  - Página de reportes con tabla y exportación
+  ├── components/                   - Componentes reutilizables
+  ├── layout/                       - Layout de la aplicación
+  └── context/                      - Contextos de React
+
+public/                             - Archivos estáticos
+.env                                - Variables de entorno (crear manualmente)
+package.json                        - Dependencias del proyecto
+
+
+================================================================================
+Fecha: Octubre 2025
+================================================================================
