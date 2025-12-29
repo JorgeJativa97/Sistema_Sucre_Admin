@@ -9,17 +9,22 @@ interface MultiSelectTitulosProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  maxSelection?: number;
 }
 
 export default function MultiSelectTitulos({
   value,
   onChange,
   placeholder = "Seleccione títulos...",
-  disabled = false
+  disabled = false,
+  maxSelection = 4
 }: MultiSelectTitulosProps) {
   const [titulos, setTitulos] = useState<CarteraVencidaTitulo[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Verificar si se alcanzó el límite de selección
+  const isMaxReached = value?.length >= maxSelection;
 
   // Cargar títulos al montar el componente
   useEffect(() => {
@@ -70,10 +75,20 @@ export default function MultiSelectTitulos({
     return (
       <div className="p-3 border-b bg-gray-50">
         <span className="font-semibold text-gray-700">
-          {count > 0 ? `${count} título(s) seleccionado(s)` : 'Seleccione títulos'}
+          {count > 0 ? `${count} de ${maxSelection} título(s) seleccionado(s)` : 'Seleccione títulos'}
         </span>
+        {isMaxReached && (
+          <span className="ml-2 text-orange-600 text-sm">(Máximo alcanzado)</span>
+        )}
       </div>
     );
+  };
+
+  // Manejador de cambio con límite de selección
+  const handleChange = (selected: CarteraVencidaTitulo[]) => {
+    if (selected.length <= maxSelection) {
+      onChange(selected);
+    }
   };
 
   if (error) {
@@ -90,7 +105,7 @@ export default function MultiSelectTitulos({
       <PrimeMultiSelect
         value={value}
         options={titulos}
-        onChange={(e) => onChange(e.value)}
+        onChange={(e) => handleChange(e.value)}
         optionLabel="DESCRIPCION"
         placeholder={loading ? "Cargando títulos..." : placeholder}
         disabled={disabled || loading}
@@ -99,6 +114,7 @@ export default function MultiSelectTitulos({
         showClear
         display="chip"
         maxSelectedLabels={3}
+        selectionLimit={maxSelection}
         selectedItemsLabel="{0} títulos seleccionados"
         emptyFilterMessage="No se encontraron títulos"
         emptyMessage="No hay títulos disponibles"

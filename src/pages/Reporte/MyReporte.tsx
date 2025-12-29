@@ -41,6 +41,7 @@ export default function MyReporte() {
     selectedReporte,
     selectedTipo,
     selectedYear,
+    selectedTitulos,
   });
 
   // Hook para manejar la exportación a Excel
@@ -52,6 +53,8 @@ export default function MyReporte() {
   // Manejador para cambio de reporte (resetea el estado consultado)
   const handleReporteChange = (v: string) => {
     setSelectedReporte(v);
+    setSelectedTipo(""); // Resetear tipo de filtro (Año/Rango)
+    setSelectedYear(""); // Resetear año seleccionado
     setSelectedTitulos([]); // Resetear títulos seleccionados
     resetConsulted(); // Ocultar tabla al cambiar reporte
   };
@@ -66,7 +69,8 @@ export default function MyReporte() {
 
     const reporteName = selectedReporte === 'carteraVencida' ? 'cartera_vencida' :
                        selectedReporte === 'carteraVencidaImpuesto' ? 'cartera_vencida_impuesto' :
-                       selectedReporte ===  'carteraVencidaDetalle' ? 'cartera_vencida_detalle' :
+                       selectedReporte === 'carteraVencidaDetalle' ? 'cartera_vencida_detalle' :
+                       selectedReporte === 'carteraVencidaTitulo' ? 'cartera_vencida_por_titulo' :
                        selectedReporte;
     
     const dateStr = new Date().toISOString().split('T')[0];
@@ -96,7 +100,19 @@ export default function MyReporte() {
             />
           </div>
 
-          {(selectedReporte === 'carteraVencida' || selectedReporte === 'carteraVencidaImpuesto'  || selectedReporte === 'carteraVencidaDetalle') && (
+          {/* MultiSelect de Títulos - Solo para carteraVencidaTitulo (se muestra primero) */}
+          {selectedReporte === 'carteraVencidaTitulo' && (
+            <div className="w-80">
+              <MultiSelectTitulos
+                value={selectedTitulos}
+                onChange={(selected) => setSelectedTitulos(selected)}
+                placeholder="Seleccione títulos..."
+                maxSelection={4}
+              />
+            </div>
+          )}
+
+          {(selectedReporte === 'carteraVencida' || selectedReporte === 'carteraVencidaImpuesto' || selectedReporte === 'carteraVencidaTitulo' || selectedReporte === 'carteraVencidaDetalle') && (
             <div>
               <SelectAdmin
                 nombre={["Año", "Rango"]}
@@ -117,22 +133,12 @@ export default function MyReporte() {
             </div>
           )}
 
-          {/* MultiSelect de Títulos - Solo para carteraVencidaTitulo */}
-          {selectedReporte === 'carteraVencidaTitulo' && (
-            <div className="w-80">
-              <MultiSelectTitulos
-                value={selectedTitulos}
-                onChange={(selected) => setSelectedTitulos(selected)}
-                placeholder="Seleccione títulos..."
-              />
-            </div>
-          )}
-
           {(selectedTipo === 'Rango') && (
              <div className="w-72">
                <SelectRango />
              </div>
           )}
+
 
           {/* Botón consultar solo para reportes que NO sean cartera vencida ni cartera vencida impuesto */}
          {/* {selectedReporte !== 'carteraVencida' && selectedReporte !== 'carteraVencidaImpuesto' && (
@@ -385,6 +391,73 @@ export default function MyReporte() {
           </div>
         </div>
       )}
+
+
+       {/* Sección especial para Cartera Vencida por titulo seleccionado- Solo descarga Excel (se muestra al seleccionar año y títulos) */}
+        {selectedReporte === 'carteraVencidaTitulo' && selectedTitulos.length > 0 && selectedTipo === 'Año' && selectedYear && (
+        <div className="mt-6 fade-in">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+            <div className="text-center">
+              <div className="mb-6">
+                <svg className="mx-auto h-16 w-16 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                Reporte de Cartera Vencida por Título
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
+                Títulos seleccionados: <span className="font-semibold text-purple-600">{selectedTitulos.length}</span>
+              </p>
+              <div className="mb-6 flex flex-wrap justify-center gap-2">
+                {selectedTitulos.map((titulo) => (
+                  <span key={titulo.CODIGO} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
+                    {titulo.DESCRIPCION}
+                  </span>
+                ))}
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                Debido al gran volumen de datos en este reporte, la información está disponible únicamente para descarga directa en Excel.
+              </p>
+              
+              <button
+                type="button"
+                onClick={handleExcelExport}
+                disabled={exporting || loading || !selectedYear || selectedTitulos.length === 0}
+                className={`inline-flex items-center gap-3 rounded-lg px-8 py-4 text-base font-medium transition-all transform hover:scale-105
+                  ${exporting || loading || !selectedYear || selectedTitulos.length === 0
+                    ? 'bg-gray-400 cursor-not-allowed text-gray-700 scale-100' 
+                    : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl'}`}
+                title={!selectedYear ? 'Debe seleccionar un año para descargar el reporte' : 'Descargar reporte por títulos seleccionados'}
+              >
+                {exporting ? (
+                  <>
+                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    Generando Excel...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Descargar Reporte Excel
+                  </>
+                )}
+              </button>
+              
+              {totalRecords > 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+                  Total de registros: {totalRecords.toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

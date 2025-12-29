@@ -12,6 +12,8 @@ type FetchParams = {
     endpoint?: string;
     // If true, the year will be appended as a path segment: /api/endpoint/<year>/
     useYearPath?: boolean;
+    // Códigos de títulos seleccionados (para carteraVencidaTitulo)
+    titulos?: number[];
 };
 
 /**
@@ -21,7 +23,7 @@ type FetchParams = {
  * - Uses VITE_API_BASE_URL if present, otherwise falls back to localhost.
  * - Accepts optional pagination params (page, pageSize) but exact param names depend on your backend pagination settings.
  */
-export const getReporteCV = async ({ q, year, from, to, page, pageSize, endpoint, useYearPath }: FetchParams = {}): Promise<ReporteUnionResponse[]> => {
+export const getReporteCV = async ({ q, year, from, to, page, pageSize, endpoint, useYearPath, titulos }: FetchParams = {}): Promise<ReporteUnionResponse[]> => {
     try {
         const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         const defaultEndpoint = '/api/ct_vencida';
@@ -41,6 +43,8 @@ export const getReporteCV = async ({ q, year, from, to, page, pageSize, endpoint
         // Common DRF pagination params: page, page_size (but your backend may differ)
         if (page !== undefined) params.page = page;
         if (pageSize !== undefined) params.page_size = pageSize;
+        // Enviar códigos de títulos como lista separada por comas (parámetro: codigos)
+        if (titulos && titulos.length > 0) params.codigos = titulos.join(',');
 
         // Determinar el tipo de respuesta basado en el endpoint
         const isCarteraVencidaImpuesto = endpointPath.includes('ct_vencida_impuesto');

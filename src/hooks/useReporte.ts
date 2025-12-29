@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
 import getReporteCV from '../components/actions/get-reporte-cv';
-import { ReporteResponse, ReporteUnionResponse } from '../interfaces/reporte.response';
+import { ReporteResponse, ReporteUnionResponse, CarteraVencidaTitulo } from '../interfaces/reporte.response';
 import { ParamsConsulta } from '../components/common/TablaAdmin';
 
 export interface ReporteFilters {
   selectedReporte: string;
   selectedTipo: string;
   selectedYear: string;
+  selectedTitulos?: CarteraVencidaTitulo[];
 }
 
 export interface UseReporteReturn {
@@ -68,8 +69,8 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
         }
       }
       else if (filters.selectedReporte === 'carteraVencidaTitulo') {
-        // Agregar lógica para título cuando sea necesario
-        endpoint = '/api/ct_vencida_titulo';
+        // Usar el endpoint de VITE_API_TITULOS para cartera vencida por título
+        endpoint = import.meta.env.VITE_API_TITULOS || '/api/ct_vencida_porimpuesto';
         if (filters.selectedTipo === 'Año' && filters.selectedYear) {
           yearParam = filters.selectedYear;
           useYearPath = true;
@@ -94,13 +95,18 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
 
       // 2. Llamada a la API con paginación limitada a 100 registros máx para display
       const limitedPageSize = Math.min(tableParams.pageSize, 100);
+      
+      // Obtener códigos de títulos seleccionados
+      const titulosCodigos = filters.selectedTitulos?.map(t => t.CODIGO) || [];
+      
       const resp = await getReporteCV({ 
         endpoint, 
         year: yearParam, 
         useYearPath,
         page: tableParams.page,
         pageSize: limitedPageSize,
-        q: tableParams.q 
+        q: tableParams.q,
+        titulos: titulosCodigos.length > 0 ? titulosCodigos : undefined
       });
 
       const resultados = resp as ReporteResponse[];
@@ -122,7 +128,7 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
     } finally {
       setLoading(false);
     }
-  }, [consulted, filters.selectedReporte, filters.selectedTipo, filters.selectedYear]);
+  }, [consulted, filters.selectedReporte, filters.selectedTipo, filters.selectedYear, filters.selectedTitulos]);
 
   // Manejador del botón consultar
   const handleConsultar = useCallback(() => {
@@ -163,11 +169,12 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
 
   // Función para obtener todos los datos (sin límite para exportación)
   const getAllData = useCallback(async (): Promise<ReporteUnionResponse[]> => {
-    // Para cartera vencida y cartera vencida impuesto, no se requiere consulted
-    // ya que se descarga directamente al seleccionar el año
+    // Para cartera vencida, cartera vencida impuesto, detalle y título, no se requiere consulted
+    // ya que se descarga directamente al seleccionar el año y títulos
     const requiresConsulted = filters.selectedReporte !== 'carteraVencida' && 
                               filters.selectedReporte !== 'carteraVencidaImpuesto' &&
-                              filters.selectedReporte !== 'carteraVencidaDetalle';
+                              filters.selectedReporte !== 'carteraVencidaDetalle' &&
+                              filters.selectedReporte !== 'carteraVencidaTitulo';
     
     if (requiresConsulted && !consulted) return [];
     
@@ -194,7 +201,8 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
       }
     }
     else if (filters.selectedReporte === 'carteraVencidaTitulo') {
-      endpoint = '/api/ct_vencida_titulo';
+      // Usar el endpoint de VITE_API_TITULOS para cartera vencida por título
+      endpoint = import.meta.env.VITE_API_TITULOS || '/api/ct_vencida_porimpuesto';
       if (filters.selectedTipo === 'Año' && filters.selectedYear) {
         yearParam = filters.selectedYear;
         useYearPath = true;
@@ -216,6 +224,9 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
     console.log(`Obteniendo todos los datos de ${endpoint}...`);
 
     try {
+      // Obtener códigos de títulos seleccionados
+      const titulosCodigos = filters.selectedTitulos?.map(t => t.CODIGO) || [];
+      
       // Solicitar TODOS los datos sin límite de paginación
       const resp = await getReporteCV({ 
         endpoint, 
@@ -223,7 +234,8 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
         useYearPath,
         page: 1,
         pageSize: 10000, // Solicitar muchos registros para obtener todo
-        q: '' // Sin filtro de búsqueda para obtener todos
+        q: '', // Sin filtro de búsqueda para obtener todos
+        titulos: titulosCodigos.length > 0 ? titulosCodigos : undefined
       });
 
       return resp as ReporteUnionResponse[];
@@ -231,7 +243,7 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
       console.error('Error obteniendo todos los datos:', err);
       return [];
     }
-  }, [consulted, filters.selectedReporte, filters.selectedTipo, filters.selectedYear]);
+  }, [consulted, filters.selectedReporte, filters.selectedTipo, filters.selectedYear, filters.selectedTitulos]);
 
   return {
     // Estados

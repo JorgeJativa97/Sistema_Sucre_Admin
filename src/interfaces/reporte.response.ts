@@ -42,6 +42,19 @@ export interface CarteraVencidaTitulo {
     DESCRIPCION: string;
 }
 
+export interface CarteraVencidaPorImpuesto {
+    COD:       number;
+    IMPUESTO:  string;
+    ANIO:      number;
+    EMISION:   number;
+    INTERES:   number;
+    COACTIVA:  number;
+    RECARGO:   number;
+    DESCUENTO: number;
+    IVA:       number;
+    TOTAL:     number;
+}
+
 
 
 // Tipo unión para manejar ambas respuestas
