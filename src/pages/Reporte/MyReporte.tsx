@@ -8,6 +8,11 @@ import SelectAdmin from "../../components/common/SelectAdmin";
 import SelectRango from "../../components/common/SelectRango";
 import MultiSelectTitulos from "../../components/common/MultiSelectTitulos";
 
+// 🔥 NUEVO: Importar el hook de reportes asíncronos
+import { useAsyncReporte } from "../../hooks/useAsyncReporte";
+// 🔥 NUEVO: Importar el componente de progreso
+import ReportProgress from "../../components/common/ReportProgress";
+
 // Componentes Lógicos y Tipos
 import { TablaServerSide } from '../../components/common/TablaAdmin';
 import { ReporteUnionResponse, CarteraVencidaTitulo } from "../../interfaces/reporte.response";
@@ -42,7 +47,18 @@ export default function MyReporte() {
     selectedTipo,
     selectedYear,
     selectedTitulos,
-  });
+  }); 
+
+   // 🔥 NUEVO: Hook para reportes asíncronos
+  const {
+    isGenerating,
+    progress,
+    status: asyncStatus,
+    error: asyncError,
+    data: asyncData,
+    generateReport,
+    cancelGeneration,
+  } = useAsyncReporte();
 
   // Hook para manejar la exportación a Excel
   const { exporting, exportWithFetch } = useExcelExport<ReporteUnionResponse>();
@@ -57,6 +73,32 @@ export default function MyReporte() {
     setSelectedYear(""); // Resetear año seleccionado
     setSelectedTitulos([]); // Resetear títulos seleccionados
     resetConsulted(); // Ocultar tabla al cambiar reporte
+    cancelGeneration(); // 🔥 NUEVO: Cancelar generación si había una en curso
+  };
+
+
+  // 🔥 NUEVO: Manejador para generar reporte asíncrono
+  const handleGenerateAsyncReport = async () => {
+    if (!selectedYear) {
+      console.warn('No se puede generar sin seleccionar un año');
+      return;
+    }
+
+    let endpoint = '';
+    let useYearPath = false;
+
+    if (selectedReporte === 'carteraVencida') {
+      endpoint = '/api/ct_vencida';
+      useYearPath = true;
+    } else if (selectedReporte === 'carteraVencidaImpuesto') {
+      endpoint = '/api/ct_vencida_impuesto';
+      useYearPath = true;
+    } else if (selectedReporte === 'carteraVencidaDetalle') {
+      endpoint = '/api/ct_vencida_titulo_detalle';
+      useYearPath = true;
+    }
+
+    await generateReport(endpoint, selectedYear, useYearPath);
   };
 
   // Manejador para exportar Excel
@@ -76,11 +118,20 @@ export default function MyReporte() {
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `${reporteName}_${selectedYear}_${dateStr}.xlsx`;
 
-    exportWithFetch(getAllData, {
-      filename,
-      sheetName: 'Reporte',
-      includeHeaders: true
-    });
+     // 🔥 NUEVO: Usar asyncData si está disponible, sino getAllData
+    if (asyncData.length > 0) {
+      exportWithFetch(() => Promise.resolve(asyncData), {
+        filename,
+        sheetName: 'Reporte',
+        includeHeaders: true
+      });
+    } else {
+      exportWithFetch(getAllData, {
+        filename,
+        sheetName: 'Reporte',
+        includeHeaders: true
+      });
+    }
   };
 
   return (
@@ -99,6 +150,8 @@ export default function MyReporte() {
               value={selectedReporte}
             />
           </div>
+
+          
 
           {/* MultiSelect de Títulos - Solo para carteraVencidaTitulo (se muestra primero) */}
           {selectedReporte === 'carteraVencidaTitulo' && (
@@ -139,26 +192,57 @@ export default function MyReporte() {
              </div>
           )}
 
-
-          {/* Botón consultar solo para reportes que NO sean cartera vencida ni cartera vencida impuesto */}
-         {/* {selectedReporte !== 'carteraVencida' && selectedReporte !== 'carteraVencidaImpuesto' && (
+           {/* 🔥🔥🔥 AQUÍ VA EL NUEVO BOTÓN 🔥🔥🔥 */}
+          {/* Botón para generar reporte asíncrono */}
+          {(selectedReporte === 'carteraVencida' || 
+            selectedReporte === 'carteraVencidaImpuesto' || 
+            selectedReporte === 'carteraVencidaDetalle') && selectedYear && (
             <div className="md:ml-4">
               <button
-                type="button"
-                disabled={!selectedYear}
-                className={`inline-flex items-center gap-2 rounded px-4 py-2 text-white transition-colors
-                  ${!selectedYear
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700 shadow-md'}`}
-                onClick={handleConsultar}
-                title={!selectedYear ? 'Debe seleccionar un año para continuar' : 'Ejecutar consulta'}
+                onClick={handleGenerateAsyncReport}
+                disabled={isGenerating}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Consultar
+                {isGenerating ? 'Generando...' : 'Generar Reporte'}
               </button>
             </div>
-          )} */}
+          )}
+
         </div>
       </div>
+
+      {/* Mostrar progreso si está generando */}
+      {isGenerating && (
+        <div className="mb-6">
+          <ReportProgress
+            status={asyncStatus}
+            progress={progress}
+            onCancel={cancelGeneration}
+          />
+          </div>
+      )}
+      {/* Mostrar error si hay */}
+      {asyncError && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+          <strong>Error:</strong> {asyncError}
+        </div>
+      )}
+
+      {/* Mostrar botón de descarga cuando termine */}
+      {asyncStatus === 'SUCCESS' && asyncData.length > 0 && (
+        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
+          <p className="mb-2">
+            ✅ Reporte generado exitosamente! {asyncData.length} registros
+          </p>
+          <button
+            onClick={handleExcelExport}
+            disabled={exporting}
+            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
+          >
+            {exporting ? 'Exportando...' : 'Descargar Excel'}
+          </button>
+        </div>
+      )}
 
       {/* Mensaje informativo cuando no hay año seleccionado */}
       {!selectedYear && (

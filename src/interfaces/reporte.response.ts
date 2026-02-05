@@ -55,6 +55,28 @@ export interface CarteraVencidaPorImpuesto {
     TOTAL:     number;
 }
 
+// Respuesta cuando se inicia un job asíncrono
+export interface AsyncJobResponse {
+  task_id: string;
+  status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILURE';
+  message: string;
+}
+
+// Respuesta al consultar el estado de un job
+export interface AsyncJobStatusResponse {
+  task_id: string;
+  status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILURE';
+  progress?: number;
+  message?: string;
+  result?: {
+    status: string;
+    year: number;
+    records: number;
+    file?: string;
+    data?: [];
+  };
+  error?: string;
+}
 
 
 // Tipo unión para manejar ambas respuestas
