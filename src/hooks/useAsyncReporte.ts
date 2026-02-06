@@ -22,8 +22,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
   const [status, setStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ReporteUnionResponse[]>([]);
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [intervalId, setIntervalId] = useState<ReturnType<typeof setInterval> | null>(null);
 
   // Función para limpiar el polling
   const cancelGeneration = useCallback(() => {
@@ -34,7 +33,6 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
     setIsGenerating(false);
     setProgress(0);
     setStatus('');
-    setTaskId(null);
   }, [intervalId]);
 
   // Función para consultar el estado del reporte
@@ -79,7 +77,6 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
       // Iniciar el job asíncrono
       const jobResponse = await startAsyncReporte(endpoint, year, useYearPath);
       
-      setTaskId(jobResponse.task_id);
       setStatus(jobResponse.status);
 
       // Iniciar polling cada 2 segundos
@@ -89,9 +86,9 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
       
       setIntervalId(id);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error generating report:', err);
-      setError(err.message || 'Error al iniciar la generación del reporte');
+      setError(err instanceof Error ? err.message : 'Error al iniciar la generación del reporte');
       setIsGenerating(false);
     }
   }, [pollStatus]);
