@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo} from "react";
 // Componentes UI
 import Filtros from "../../components/common/Filtros";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -30,6 +30,9 @@ export default function MyReporte() {
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedTipo, setSelectedTipo] = useState<string>("");
   const [selectedTitulos, setSelectedTitulos] = useState<CarteraVencidaTitulo[]>([]);
+
+   // 🔥 NUEVO: Estado para controlar si el reporte ya fue descargado
+  const [reporteDescargado, setReporteDescargado] = useState<boolean>(false);
 
   // Hook para manejar la lógica de datos de reportes
   const {
@@ -66,6 +69,13 @@ export default function MyReporte() {
   // Definición de Columnas dinámicas basadas en el tipo de reporte
   const columns = getColumnsForReporte(selectedReporte, data);
 
+   // 🔥 NUEVO: Memorizar la condición del botón de descarga para evitar parpadeos
+  const debeaMostrarBotonDescarga = useMemo(() => {
+    return asyncStatus === 'SUCCESS' && 
+           asyncData.length > 0 && 
+           !reporteDescargado;
+  }, [asyncStatus, asyncData.length, reporteDescargado]);
+
   // Manejador para cambio de reporte (resetea el estado consultado)
   const handleReporteChange = (v: string) => {
     setSelectedReporte(v);
@@ -74,6 +84,7 @@ export default function MyReporte() {
     setSelectedTitulos([]); // Resetear títulos seleccionados
     resetConsulted(); // Ocultar tabla al cambiar reporte
     cancelGeneration(); // 🔥 NUEVO: Cancelar generación si había una en curso
+    setReporteDescargado(false); // 🔥 NUEVO: Resetear estado de descarga
   };
 
 
@@ -118,19 +129,28 @@ export default function MyReporte() {
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `${reporteName}_${selectedYear}_${dateStr}.xlsx`;
 
-     // 🔥 NUEVO: Usar asyncData si está disponible, sino getAllData
-    if (asyncData.length > 0) {
-      exportWithFetch(() => Promise.resolve(asyncData), {
-        filename,
-        sheetName: 'Reporte',
-        includeHeaders: true
-      });
-    } else {
-      exportWithFetch(getAllData, {
-        filename,
-        sheetName: 'Reporte',
-        includeHeaders: true
-      });
+     try {
+      // 🔥 NUEVO: Usar asyncData si está disponible, sino getAllData
+      if (asyncData.length > 0) {
+        await exportWithFetch(() => Promise.resolve(asyncData), {
+          filename,
+          sheetName: 'Reporte',
+          includeHeaders: true
+        });
+      } else {
+        await exportWithFetch(getAllData, {
+          filename,
+          sheetName: 'Reporte',
+          includeHeaders: true
+        });
+      }
+
+      // 🔥 NUEVO: Marcar como descargado después de la exportación exitosa
+      setReporteDescargado(true);
+      
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      // No marcar como descargado si hay error
     }
   };
 
@@ -158,7 +178,10 @@ export default function MyReporte() {
             <div className="w-80">
               <MultiSelectTitulos
                 value={selectedTitulos}
-                onChange={(selected) => setSelectedTitulos(selected)}
+                 onChange={(selected) => {
+                  setSelectedTitulos(selected);
+                  setReporteDescargado(false); // 🔥 NUEVO: Resetear al cambiar títulos
+                }}
                 placeholder="Seleccione títulos..."
                 maxSelection={4}
               />
@@ -169,7 +192,10 @@ export default function MyReporte() {
             <div>
               <SelectAdmin
                 nombre={["Año", "Rango"]}
-                onChange={(v) => setSelectedTipo(v)}
+                onChange={(v) => {
+                  setSelectedTipo(v);
+                  setReporteDescargado(false); // 🔥 NUEVO: Resetear al cambiar tipo
+                }}
                 value={selectedTipo}
               />
             </div>
@@ -179,7 +205,10 @@ export default function MyReporte() {
             <div className="w-48">
               <YearSelect
                 value={selectedYear}
-                onChange={(y) => setSelectedYear(y)}
+                onChange={(y) => {
+                  setSelectedYear(y);
+                  setReporteDescargado(false); // 🔥 NUEVO: Resetear al cambiar año
+                }}
                 startYear={2000}
                 endYear={new Date().getFullYear()}
               />
@@ -228,19 +257,83 @@ export default function MyReporte() {
         </div>
       )}
 
-      {/* Mostrar botón de descarga cuando termine */}
-      {asyncStatus === 'SUCCESS' && asyncData.length > 0 && (
-        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
-          <p className="mb-2">
-            ✅ Reporte generado exitosamente! {asyncData.length} registros
+      {/* 🔥 MODIFICADO: Mostrar botón de descarga cuando termine (usando useMemo) */}
+      {debeaMostrarBotonDescarga && (
+        <div className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded-md fade-in">
+          <p className="mb-2 font-medium">
+            ✅ Reporte generado exitosamente! {asyncData.length.toLocaleString()} registros
           </p>
           <button
             onClick={handleExcelExport}
             disabled={exporting}
-            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
+            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            {exporting ? 'Exportando...' : 'Descargar Excel'}
+            {exporting ? (
+              <span className="flex items-center gap-2">
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                Exportando...
+              </span>
+            ) : (
+              '📥 Descargar Excel'
+            )}
           </button>
+        </div>
+      )}
+
+      {/* 🔥 NUEVO: Mostrar mensaje de éxito después de descargar */}
+      {reporteDescargado && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 rounded-md fade-in">
+          <div className="flex items-start gap-3">
+            <svg className="h-6 w-6 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium">
+                ✅ Archivo descargado exitosamente
+              </p>
+              <p className="text-sm mt-1">
+                El reporte con {asyncData.length.toLocaleString()} registros se ha descargado en formato Excel
+              </p>
+              <button
+                onClick={() => {
+                  setReporteDescargado(false);
+                }}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline"
+              >
+                Generar otro reporte
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔥 NUEVO: Mostrar mensaje de éxito después de descargar */}
+      {reporteDescargado && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 rounded-md fade-in">
+          <div className="flex items-start gap-3">
+            <svg className="h-6 w-6 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium">
+                ✅ Archivo descargado exitosamente
+              </p>
+              <p className="text-sm mt-1">
+                El reporte con {asyncData.length.toLocaleString()} registros se ha descargado en formato Excel
+              </p>
+              <button
+                onClick={() => {
+                  setReporteDescargado(false);
+                }}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline"
+              >
+                Generar otro reporte
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -308,61 +401,6 @@ export default function MyReporte() {
             resetKey={refreshKey}
             titulo=""
           />
-        </div>
-      )}
-
-      {/* Sección especial para Cartera Vencida - Solo descarga Excel (se muestra al seleccionar año) */}
-      {selectedReporte === 'carteraVencida' && selectedTipo === 'Año' && selectedYear  && (
-        <div className="mt-6 fade-in">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
-            <div className="text-center">
-              <div className="mb-6">
-                <svg className="mx-auto h-16 w-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                Reporte de Cartera Vencida
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                Debido al gran volumen de datos en este reporte, la información está disponible únicamente para descarga directa en Excel.
-              </p>
-              
-              <button
-                type="button"
-                onClick={handleExcelExport}
-                disabled={exporting || loading || !selectedYear}
-                className={`inline-flex items-center gap-3 rounded-lg px-8 py-4 text-base font-medium transition-all transform hover:scale-105
-                  ${exporting || loading || !selectedYear
-                    ? 'bg-gray-400 cursor-not-allowed text-gray-700 scale-100' 
-                    : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'}`}
-                title={!selectedYear ? 'Debe seleccionar un año para descargar el reporte' : 'Descargar reporte completo'}
-              >
-                {exporting ? (
-                  <>
-                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    Generando Excel...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Descargar Reporte Excel
-                  </>
-                )}
-              </button>
-              
-              {totalRecords > 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-                  Total de registros: {totalRecords.toLocaleString()}
-                </p>
-              )}
-            </div>
-          </div>
         </div>
       )}
 

@@ -2,11 +2,18 @@ version: '3.8'
 
 services:
   frontend:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: http://192.168.50.90:8000
+        VITE_API_TOKEN: ClaveSecreta123
+        VITE_API_CT_VENCIDA: /api/ct_vencida
+        VITE_API_CT_VENCIDA_IMPUESTO: /api/ct_vencida_impuesto
+        VITE_API_CT_VENCIDA_TITULO: /api/ct_vencida_titulo
+        VITE_API_CT_VENCIDA_DETALLE: /api/ct_vencida_titulo_detalle
+        VITE_API_TITULOS: /api/ct_vencida_porimpuesto
     ports:
-      - "3000:3000"
-    env_file:
-      - .env
+      - "3000:80"
     networks:
       - frontend-network
     restart: unless-stopped
