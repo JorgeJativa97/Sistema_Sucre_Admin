@@ -113,7 +113,7 @@ export default function MyReporte() {
   };
 
   // Manejador para exportar Excel
-  const handleExcelExport = () => {
+  const handleExcelExport = async  () => {
     // Validar que haya año seleccionado antes de exportar
     if (!selectedYear) {
       console.warn('No se puede exportar sin seleccionar un año');
