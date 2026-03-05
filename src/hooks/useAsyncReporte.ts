@@ -25,9 +25,12 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
   
   // 🔥 NUEVO: Usar useRef en lugar de state para el intervalId
   const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
+
   // 🔥 NUEVO: Flag para evitar múltiples llamadas
   const hasCompletedRef = useRef<boolean>(false);
+
+  // Año del reporte en curso (necesario para llamar al endpoint de datos)
+  const yearRef = useRef<string | number>('');
 
   // Función para limpiar el polling
   const cancelGeneration = useCallback(() => {
@@ -51,7 +54,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
     try {
       const statusResponse: AsyncJobStatusResponse = await getAsyncReporteStatus(id);
       
-      console.log('📊 Polling status:', statusResponse.status, 'Progress:', statusResponse.progress);
+      console.log('Polling status:', statusResponse.status, 'Progress:', statusResponse.progress);
       
       setStatus(statusResponse.status);
       setProgress(statusResponse.progress || 0);
@@ -66,12 +69,12 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
           intervalIdRef.current = null;
         }
 
-        console.log('✅ Reporte completado, obteniendo datos...');
+        console.log('Reporte completado, obteniendo datos...');
+
+        // Obtener los datos del reporte desde el endpoint /api/ct_vencida/datos/<year>/
+        const reportData = await getAsyncReporteData(yearRef.current);
         
-        // Obtener los datos del reporte
-        const reportData = await getAsyncReporteData(id);
-        
-        console.log('✅ Datos obtenidos:', reportData.length, 'registros');
+        console.log('Datos obtenidos:', reportData.length, 'registros');
         
         setData(reportData);
         setIsGenerating(false);
@@ -90,7 +93,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
       // 🔥 NUEVO: Si está PENDING o PROCESSING, continuar polling (no hacer nada aquí)
       
     } catch (err) {
-      console.error('❌ Error polling status:', err);
+      console.error('Error polling status:', err);
       hasCompletedRef.current = true; // 🔥 NUEVO
       
       if (intervalIdRef.current) {
@@ -112,6 +115,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
     try {
       // 🔥 NUEVO: Limpiar estados previos
       hasCompletedRef.current = false;
+      yearRef.current = year;
       
       // Limpiar intervalo anterior si existe
       if (intervalIdRef.current) {
@@ -125,12 +129,12 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
       setData([]);
       setStatus('PENDING');
 
-      console.log('🚀 Iniciando reporte:', endpoint, year);
+      console.log('Iniciando reporte:', endpoint, year);
 
       // Iniciar el job asíncrono
       const jobResponse = await startAsyncReporte(endpoint, year, useYearPath);
       
-      console.log('📝 Job iniciado:', jobResponse.task_id, 'Status:', jobResponse.status);
+      console.log('Job iniciado:', jobResponse.task_id, 'Status:', jobResponse.status);
       
       setStatus(jobResponse.status);
 
@@ -145,7 +149,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
       setTimeout(() => pollStatus(jobResponse.task_id), 500);
 
     } catch (err: unknown) {
-      console.error('❌ Error generating report:', err);
+      console.error('Error generating report:', err);
       setError(err instanceof Error ? err.message : 'Error al iniciar la generación del reporte');
       setIsGenerating(false);
       hasCompletedRef.current = true; // 🔥 NUEVO

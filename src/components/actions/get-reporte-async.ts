@@ -56,19 +56,23 @@ export const getAsyncReporteStatus = async (
 };
 
 /**
- * Obtiene los datos del reporte cuando está completo
+ * Obtiene los datos del reporte desde el archivo JSON generado por Celery.
+ * Llama al endpoint /api/ct_vencida/datos/<year>/ que lee el archivo guardado
+ * en el servidor (los datos no se almacenan en Redis para no saturarlo).
  */
 export const getAsyncReporteData = async (
-  taskId: string
+  year: string | number
 ): Promise<ReporteUnionResponse[]> => {
   try {
-    const statusResponse = await getAsyncReporteStatus(taskId);
-    
-    if (statusResponse.status === 'SUCCESS' && statusResponse.result?.data) {
-      return statusResponse.result.data;
-    }
-    
-    return [];
+    const url = `${BASE_URL}/api/ct_vencida/datos/${year}/`;
+
+    const response = await axios.get<ReporteUnionResponse[]>(url, {
+      headers: {
+        'x-api-key': API_KEY,
+      },
+    });
+
+    return response.data;
   } catch (error) {
     console.error('Error getting async report data:', error);
     throw error;

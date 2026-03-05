@@ -261,7 +261,7 @@ export default function MyReporte() {
       {debeaMostrarBotonDescarga && (
         <div className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded-md fade-in">
           <p className="mb-2 font-medium">
-            ✅ Reporte generado exitosamente! {asyncData.length.toLocaleString()} registros
+            Reporte generado exitosamente! {asyncData.length.toLocaleString()} registros
           </p>
           <button
             onClick={handleExcelExport}
@@ -277,7 +277,7 @@ export default function MyReporte() {
                 Exportando...
               </span>
             ) : (
-              '📥 Descargar Excel'
+              'Descargar Excel'
             )}
           </button>
         </div>
@@ -292,34 +292,7 @@ export default function MyReporte() {
             </svg>
             <div className="flex-1">
               <p className="font-medium">
-                ✅ Archivo descargado exitosamente
-              </p>
-              <p className="text-sm mt-1">
-                El reporte con {asyncData.length.toLocaleString()} registros se ha descargado en formato Excel
-              </p>
-              <button
-                onClick={() => {
-                  setReporteDescargado(false);
-                }}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline"
-              >
-                Generar otro reporte
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 🔥 NUEVO: Mostrar mensaje de éxito después de descargar */}
-      {reporteDescargado && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 rounded-md fade-in">
-          <div className="flex items-start gap-3">
-            <svg className="h-6 w-6 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="flex-1">
-              <p className="font-medium">
-                ✅ Archivo descargado exitosamente
+                Archivo descargado exitosamente
               </p>
               <p className="text-sm mt-1">
                 El reporte con {asyncData.length.toLocaleString()} registros se ha descargado en formato Excel
