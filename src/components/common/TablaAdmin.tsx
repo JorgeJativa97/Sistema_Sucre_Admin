@@ -1,3 +1,8 @@
+// Componente de tabla con paginación server-side usando PrimeReact DataTable.
+// La carga de datos es responsabilidad del componente padre mediante la prop onParamsChange,
+// que se invoca cada vez que cambia la página, el tamaño de página o el texto de búsqueda.
+// Incluye debounce de 500ms para la búsqueda y se resetea cuando cambia resetKey.
+
 import { useState, useEffect } from 'react';
 import { DataTable, DataTablePageEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';

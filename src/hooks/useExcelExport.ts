@@ -1,3 +1,8 @@
+// Hook para exportar datos a Excel usando la librería SheetJS (xlsx).
+// Soporta dos modos:
+//   - exportToExcel: recibe los datos ya cargados en memoria y los exporta directamente
+//   - exportWithFetch: llama primero a una función async para obtener los datos y luego exporta
+
 import { useState, useCallback } from 'react';
 
 export interface ExcelExportOptions {

@@ -1,3 +1,8 @@
+// Función principal para obtener datos de reportes desde el backend Django con paginación.
+// Soporta múltiples endpoints según el tipo de reporte y acepta filtros opcionales
+// (año como segmento de ruta, rango de fechas, búsqueda, códigos de títulos).
+// La API key se envía en el header 'x-api-key'.
+
 import axios from 'axios';
 import { ReporteResponse, CarteraVencidaImpuestoResponse, ReporteUnionResponse } from '../../interfaces/reporte.response';
 

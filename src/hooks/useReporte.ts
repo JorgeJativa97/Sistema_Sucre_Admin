@@ -1,7 +1,13 @@
+// Hook para obtener datos de reportes y exportarlos a Excel.
+//
+// Responsabilidades:
+//   - getAllData: obtiene todos los registros sin límite de paginación para exportación Excel
+//   - resetConsulted: resetea el estado al cambiar de tipo de reporte
+//   - loading: true mientras getAllData está en curso (para deshabilitar botones)
+
 import { useState, useCallback } from 'react';
 import getReporteCV from '../components/actions/get-reporte-cv';
 import { ReporteResponse, ReporteUnionResponse, CarteraVencidaTitulo } from '../interfaces/reporte.response';
-import { ParamsConsulta } from '../components/common/TablaAdmin';
 
 export interface ReporteFilters {
   selectedReporte: string;
@@ -11,16 +17,8 @@ export interface ReporteFilters {
 }
 
 export interface UseReporteReturn {
-  // Estados
-  data: ReporteUnionResponse[];
   loading: boolean;
-  consulted: boolean;
   totalRecords: number;
-  refreshKey: number;
-  
-  // Acciones
-  fetchReportData: (params: ParamsConsulta) => Promise<void>;
-  handleConsultar: () => void;
   resetConsulted: () => void;
   getAllData: () => Promise<ReporteUnionResponse[]>;
 }
@@ -30,155 +28,16 @@ export interface UseReporteReturn {
  * Centraliza toda la lógica de endpoints, validaciones y manejo de estados
  */
 export function useReporte(filters: ReporteFilters): UseReporteReturn {
-  // Estados de Datos
-  const [data, setData] = useState<ReporteUnionResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [consulted, setConsulted] = useState<boolean>(false);
   const [totalRecords, setTotalRecords] = useState<number>(0);
-  const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  // Función principal de carga de datos
-  const fetchReportData = useCallback(async (tableParams: ParamsConsulta) => {
-    if (!consulted) return; // No cargar si no se ha pulsado consultar
-
-    setLoading(true);
-    try {
-      let endpoint = '';
-      let useYearPath = false;
-      let yearParam: string | number | undefined = undefined;
-
-      // 1. Configurar Endpoint según selección
-      if (filters.selectedReporte === 'carteraVencida') {
-        endpoint = '/api/ct_vencida';
-        if (filters.selectedTipo === 'Año' && filters.selectedYear) {
-          yearParam = filters.selectedYear;
-          useYearPath = true;
-        }
-      } 
-      else if (filters.selectedReporte === 'carteraVencidaImpuesto') {
-        endpoint = '/api/ct_vencida_impuesto';
-        // Validación extra por si acaso
-        if (filters.selectedTipo === 'Año' && filters.selectedYear) {
-          yearParam = filters.selectedYear;
-          useYearPath = true;
-        } else {
-          console.warn('Falta configuración de año para Impuesto');
-          setData([]); 
-          setLoading(false); 
-          return;
-        }
-      }
-      else if (filters.selectedReporte === 'carteraVencidaTitulo') {
-        // Usar el endpoint de VITE_API_TITULOS para cartera vencida por título
-        endpoint = import.meta.env.VITE_API_TITULOS || '/api/ct_vencida_porimpuesto';
-        if (filters.selectedTipo === 'Año' && filters.selectedYear) {
-          yearParam = filters.selectedYear;
-          useYearPath = true;
-        }
-      }
-      //Realiza consulta a endpoint de reporte de ciu detallado
-    else if (filters.selectedReporte === 'carteraVencidaDetalle') {
-      endpoint = '/api/ct_vencida_titulo_detalle';
-      if (filters.selectedTipo === 'Año' && filters.selectedYear) {
-        yearParam = filters.selectedYear;
-        useYearPath = true;
-      }
-    }
-      else {
-        console.log('Reporte no implementado:', filters.selectedReporte);
-        setData([]); 
-        setLoading(false); 
-        return;
-      }
-
-      console.log(`Consultando ${endpoint} - Página: ${tableParams.page}`);
-
-      // 2. Llamada a la API con paginación limitada a 100 registros máx para display
-      const limitedPageSize = Math.min(tableParams.pageSize, 100);
-      
-      // Obtener códigos de títulos seleccionados
-      const titulosCodigos = filters.selectedTitulos?.map(t => t.CODIGO) || [];
-      
-      const resp = await getReporteCV({ 
-        endpoint, 
-        year: yearParam, 
-        useYearPath,
-        page: tableParams.page,
-        pageSize: limitedPageSize,
-        q: tableParams.q,
-        titulos: titulosCodigos.length > 0 ? titulosCodigos : undefined
-      });
-
-      const resultados = resp as ReporteResponse[];
-      setData(resultados);
-
-      // 3. Manejo de "Total de Registros" - limitado a 100 para display
-      if (resultados.length < limitedPageSize) {
-        // Si vinieron menos datos que el tamaño de página, es la última página
-        setTotalRecords((tableParams.page - 1) * limitedPageSize + resultados.length);
-      } else {
-        // Limitamos el total a 100 registros max para evitar sobrecarga
-        setTotalRecords(Math.min(100, (tableParams.page + 1) * limitedPageSize)); 
-      }
-
-    } catch (err) {
-      console.error('Error cargando reporte', err);
-      setData([]);
-      setTotalRecords(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [consulted, filters.selectedReporte, filters.selectedTipo, filters.selectedYear, filters.selectedTitulos]);
-
-  // Manejador del botón consultar
-  const handleConsultar = useCallback(() => {
-    // Validación obligatoria: debe tener año seleccionado para ambos reportes
-    if (!filters.selectedYear) {
-      console.warn('No se puede ejecutar el reporte sin seleccionar un año');
-      return;
-    }
-
-    // Validaciones adicionales para cartera vencida impuesto
-    if (filters.selectedReporte === 'carteraVencidaImpuesto' && 
-        filters.selectedTipo !== 'Año') {
-      console.warn('Para cartera vencida impuesto debe seleccionar tipo "Año"');
-      return; 
-    }
-
-    // Para cartera vencida y cartera vencida impuesto, solo marcamos como consultado sin cargar datos
-    // ya que no vamos a mostrar tabla (solo descarga Excel debido al gran volumen)
-    if (filters.selectedReporte === 'carteraVencida' || filters.selectedReporte === 'carteraVencidaImpuesto' || filters.selectedReporte === 'carteraVencidaDetalle') {
-      setData([]);
-      setTotalRecords(0);
-      setConsulted(true);
-      return;
-    }
-
-    // Para otros reportes, proceder normalmente
-    setConsulted(true);
-    // Reiniciar paginación
-    setRefreshKey(prev => prev + 1);
-  }, [filters.selectedReporte, filters.selectedTipo, filters.selectedYear]);
-
-  // Función para resetear el estado consultado
+  // Resetea el estado al cambiar de tipo de reporte
   const resetConsulted = useCallback(() => {
-    setConsulted(false);
-    setData([]);
     setTotalRecords(0);
   }, []);
 
-  // Función para obtener todos los datos (sin límite para exportación)
+  // Obtiene todos los registros sin límite de paginación para exportación Excel
   const getAllData = useCallback(async (): Promise<ReporteUnionResponse[]> => {
-    // Para cartera vencida, cartera vencida impuesto, detalle y título, no se requiere consulted
-    // ya que se descarga directamente al seleccionar el año y títulos
-    const requiresConsulted = filters.selectedReporte !== 'carteraVencida' && 
-                              filters.selectedReporte !== 'carteraVencidaImpuesto' &&
-                              filters.selectedReporte !== 'carteraVencidaDetalle' &&
-                              filters.selectedReporte !== 'carteraVencidaTitulo';
-    
-    if (requiresConsulted && !consulted) return [];
-    
-    // Validar que tenga año seleccionado
     if (!filters.selectedYear) return [];
 
     let endpoint = '';
@@ -223,39 +82,33 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
 
     console.log(`Obteniendo todos los datos de ${endpoint}...`);
 
+    setLoading(true);
     try {
-      // Obtener códigos de títulos seleccionados
       const titulosCodigos = filters.selectedTitulos?.map(t => t.CODIGO) || [];
-      
-      // Solicitar TODOS los datos sin límite de paginación
-      const resp = await getReporteCV({ 
-        endpoint, 
-        year: yearParam, 
+
+      const resp = await getReporteCV({
+        endpoint,
+        year: yearParam,
         useYearPath,
         page: 1,
-        pageSize: 10000, // Solicitar muchos registros para obtener todo
-        q: '', // Sin filtro de búsqueda para obtener todos
+        pageSize: 10000, // Sin límite para exportación completa
+        q: '',
         titulos: titulosCodigos.length > 0 ? titulosCodigos : undefined
       });
 
+      setTotalRecords((resp as ReporteUnionResponse[]).length);
       return resp as ReporteUnionResponse[];
     } catch (err) {
       console.error('Error obteniendo todos los datos:', err);
       return [];
+    } finally {
+      setLoading(false);
     }
-  }, [consulted, filters.selectedReporte, filters.selectedTipo, filters.selectedYear, filters.selectedTitulos]);
+  }, [filters.selectedReporte, filters.selectedTipo, filters.selectedYear, filters.selectedTitulos]);
 
   return {
-    // Estados
-    data,
     loading,
-    consulted,
     totalRecords,
-    refreshKey,
-    
-    // Acciones
-    fetchReportData,
-    handleConsultar,
     resetConsulted,
     getAllData,
   };

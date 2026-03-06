@@ -1,12 +1,23 @@
+// Funciones de acceso a la API para reportes asíncronos generados por Celery.
+//
+// Flujo del backend:
+//   1. startAsyncReporte  → POST/GET al endpoint del reporte → backend encola el job en Celery
+//   2. getAsyncReporteStatus → GET /api/ct_vencida/status/<taskId>/ → devuelve estado y progreso
+//   3. getAsyncReporteData   → GET /api/ct_vencida/datos/<year>/    → devuelve JSON guardado en disco
+//
+// IMPORTANTE: getAsyncReporteStatus y getAsyncReporteData usan endpoints hardcodeados
+// de ct_vencida. Si se agrega soporte para más tipos de reportes asíncronos,
+// se debe parametrizar el endpoint de status y datos.
+
 import axios from 'axios';
-import { AsyncJobResponse, AsyncJobStatusResponse } from '../../interfaces/reporte.response';
-import { ReporteUnionResponse } from '../../interfaces/reporte.response';
+import { AsyncJobResponse, AsyncJobStatusResponse, ReporteUnionResponse } from '../../interfaces/reporte.response';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_TOKEN;
 
 /**
- * Inicia la generación asíncrona de un reporte
+ * Inicia la generación asíncrona de un reporte en el backend.
+ * El backend responde inmediatamente con un task_id para hacer seguimiento.
  */
 export const startAsyncReporte = async (
   endpoint: string,

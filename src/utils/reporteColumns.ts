@@ -1,12 +1,17 @@
+// Definiciones de columnas para la tabla de reportes.
+// Cada función retorna la configuración de columnas correspondiente
+// al tipo de reporte seleccionado.
+
 import { ColumnaConfig } from '../components/common/TablaAdmin';
 import { ReporteResponse, CarteraVencidaImpuestoResponse, ReporteUnionResponse } from '../interfaces/reporte.response';
 
-// Función para verificar el tipo de reporte
+// Type guard: verifica si un objeto es de tipo CarteraVencidaImpuestoResponse
+// inspeccionando campos únicos de esa interfaz (COD e IMPUESTO)
 export const isCarteraVencidaImpuesto = (data: unknown): data is CarteraVencidaImpuestoResponse => {
   return data !== null && typeof data === 'object' && 'COD' in data && 'IMPUESTO' in data;
 };
 
-// Columnas para cartera vencida normal
+// Columnas para el reporte de Cartera Vencida general (por ciudadano)
 export const getCarteraVencidaColumns = (): ColumnaConfig<ReporteResponse>[] => [
   { campo: 'cedula', header: 'Cédula' },
   { campo: 'nombre', header: 'Nombre' },
@@ -15,7 +20,7 @@ export const getCarteraVencidaColumns = (): ColumnaConfig<ReporteResponse>[] => 
   { campo: 'total', header: 'Total ($)' },
 ];
 
-// Columnas para cartera vencida impuesto
+// Columnas para el reporte de Cartera Vencida agrupada por tipo de impuesto
 export const getCarteraVencidaImpuestoColumns = (): ColumnaConfig<CarteraVencidaImpuestoResponse>[] => [
   { campo: 'COD', header: 'Código', ancho: '100px' },
   { campo: 'IMPUESTO', header: 'Impuesto', ancho: '200px' },
@@ -29,7 +34,8 @@ export const getCarteraVencidaImpuestoColumns = (): ColumnaConfig<CarteraVencida
   { campo: 'TOTAL', header: 'Total ($)', ancho: '120px' },
 ];
 
-// Función para obtener las columnas apropiadas basándose en el tipo de reporte
+// Retorna las columnas apropiadas según el tipo de reporte activo.
+// Primero verifica por nombre del reporte, luego por inferencia de estructura de datos.
 export const getColumnsForReporte = (reporteType: string, sampleData?: ReporteUnionResponse[]): ColumnaConfig<ReporteUnionResponse>[] => {
   if (reporteType === 'carteraVencidaImpuesto' || (sampleData && sampleData.length > 0 && isCarteraVencidaImpuesto(sampleData[0]))) {
     return getCarteraVencidaImpuestoColumns() as ColumnaConfig<ReporteUnionResponse>[];

@@ -1,5 +1,19 @@
-import { useState, useMemo} from "react";
-// Componentes UI
+// Página principal de reportes del sistema Cabildo.
+// Permite al usuario seleccionar el tipo de reporte, filtrar por año/rango/títulos
+// y descargar los datos en Excel.
+//
+// Flujo general:
+//   1. Seleccionar tipo de reporte
+//   2. Seleccionar filtros (tipo: Año o Rango, año, títulos si aplica)
+//   3. Para reportes grandes (carteraVencida, carteraVencidaImpuesto, carteraVencidaDetalle):
+//      - Hacer clic en "Generar Reporte" → inicia job asíncrono con polling
+//      - Al completarse, aparece el botón "Descargar Excel"
+//   4. Para carteraVencidaTitulo:
+//      - El botón de descarga aparece directamente al seleccionar año y títulos
+
+import { useState, useMemo } from "react";
+
+// Componentes de filtros y UI
 import Filtros from "../../components/common/Filtros";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import SelectorReporte from "../../components/common/SelectorReporte";
@@ -8,41 +22,32 @@ import SelectAdmin from "../../components/common/SelectAdmin";
 import SelectRango from "../../components/common/SelectRango";
 import MultiSelectTitulos from "../../components/common/MultiSelectTitulos";
 
-// 🔥 NUEVO: Importar el hook de reportes asíncronos
+// Hook para generación de reportes vía job asíncrono (Celery)
 import { useAsyncReporte } from "../../hooks/useAsyncReporte";
-// 🔥 NUEVO: Importar el componente de progreso
+// Componente de barra de progreso para jobs asíncronos
 import ReportProgress from "../../components/common/ReportProgress";
 
-// Componentes Lógicos y Tipos
-import { TablaServerSide } from '../../components/common/TablaAdmin';
 import { ReporteUnionResponse, CarteraVencidaTitulo } from "../../interfaces/reporte.response";
 
-// Hooks personalizados
+// Hook para descarga de datos completos y estado de carga
 import { useReporte } from "../../hooks/useReporte";
+// Hook para exportación a Excel con SheetJS
 import { useExcelExport } from "../../hooks/useExcelExport";
 
-// Utilidades para columnas
-import { getColumnsForReporte } from "../../utils/reporteColumns";
-
 export default function MyReporte() {
-  // Estados de Filtros
-  const [selectedReporte, setSelectedReporte] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedTipo, setSelectedTipo] = useState<string>("");
-  const [selectedTitulos, setSelectedTitulos] = useState<CarteraVencidaTitulo[]>([]);
+  // --- Estados de Filtros ---
+  const [selectedReporte, setSelectedReporte] = useState<string>("");   // Tipo de reporte seleccionado
+  const [selectedYear, setSelectedYear] = useState<string>("");          // Año seleccionado
+  const [selectedTipo, setSelectedTipo] = useState<string>("");          // Tipo de filtro: "Año" o "Rango"
+  const [selectedTitulos, setSelectedTitulos] = useState<CarteraVencidaTitulo[]>([]); // Títulos seleccionados (máx 4)
 
-   // 🔥 NUEVO: Estado para controlar si el reporte ya fue descargado
+  // Controla si el reporte ya fue descargado para mostrar mensaje de confirmación
   const [reporteDescargado, setReporteDescargado] = useState<boolean>(false);
 
-  // Hook para manejar la lógica de datos de reportes
+  // Hook que maneja la descarga completa de datos para exportación Excel
   const {
-    data,
     loading,
-    consulted,
     totalRecords,
-    refreshKey,
-    fetchReportData,
-  //  handleConsultar,
     resetConsulted,
     getAllData,
   } = useReporte({
@@ -50,9 +55,9 @@ export default function MyReporte() {
     selectedTipo,
     selectedYear,
     selectedTitulos,
-  }); 
+  });
 
-   // 🔥 NUEVO: Hook para reportes asíncronos
+  // Hook que maneja la generación asíncrona de reportes grandes mediante polling al backend
   const {
     isGenerating,
     progress,
@@ -63,32 +68,30 @@ export default function MyReporte() {
     cancelGeneration,
   } = useAsyncReporte();
 
-  // Hook para manejar la exportación a Excel
+  // Hook para exportar datos a Excel usando SheetJS
   const { exporting, exportWithFetch } = useExcelExport<ReporteUnionResponse>();
 
-  // Definición de Columnas dinámicas basadas en el tipo de reporte
-  const columns = getColumnsForReporte(selectedReporte, data);
-
-   // 🔥 NUEVO: Memorizar la condición del botón de descarga para evitar parpadeos
+  // Memorizado: solo muestra el botón de descarga cuando el job asíncrono terminó exitosamente
+  // y aún no se ha descargado el archivo (evita parpadeos por re-renders)
   const debeaMostrarBotonDescarga = useMemo(() => {
-    return asyncStatus === 'SUCCESS' && 
-           asyncData.length > 0 && 
+    return asyncStatus === 'SUCCESS' &&
+           asyncData.length > 0 &&
            !reporteDescargado;
   }, [asyncStatus, asyncData.length, reporteDescargado]);
 
-  // Manejador para cambio de reporte (resetea el estado consultado)
+  // Al cambiar el tipo de reporte, resetea todos los filtros y estados derivados
   const handleReporteChange = (v: string) => {
     setSelectedReporte(v);
-    setSelectedTipo(""); // Resetear tipo de filtro (Año/Rango)
-    setSelectedYear(""); // Resetear año seleccionado
-    setSelectedTitulos([]); // Resetear títulos seleccionados
-    resetConsulted(); // Ocultar tabla al cambiar reporte
-    cancelGeneration(); // 🔥 NUEVO: Cancelar generación si había una en curso
-    setReporteDescargado(false); // 🔥 NUEVO: Resetear estado de descarga
+    setSelectedTipo("");
+    setSelectedYear("");
+    setSelectedTitulos([]);
+    resetConsulted();
+    cancelGeneration(); // Cancela cualquier job asíncrono en curso
+    setReporteDescargado(false);
   };
 
-
-  // 🔥 NUEVO: Manejador para generar reporte asíncrono
+  // Inicia la generación asíncrona del reporte en el backend (via Celery).
+  // Solo aplica para reportes de gran volumen: carteraVencida, carteraVencidaImpuesto, carteraVencidaDetalle.
   const handleGenerateAsyncReport = async () => {
     if (!selectedYear) {
       console.warn('No se puede generar sin seleccionar un año');
@@ -112,25 +115,28 @@ export default function MyReporte() {
     await generateReport(endpoint, selectedYear, useYearPath);
   };
 
-  // Manejador para exportar Excel
-  const handleExcelExport = async  () => {
-    // Validar que haya año seleccionado antes de exportar
+  // Exporta los datos a un archivo Excel con nombre descriptivo.
+  // Prioriza los datos del job asíncrono (asyncData) si están disponibles,
+  // de lo contrario hace una llamada completa a la API (getAllData).
+  const handleExcelExport = async () => {
     if (!selectedYear) {
       console.warn('No se puede exportar sin seleccionar un año');
       return;
     }
 
+    // Mapear el identificador del reporte a un nombre de archivo legible
     const reporteName = selectedReporte === 'carteraVencida' ? 'cartera_vencida' :
                        selectedReporte === 'carteraVencidaImpuesto' ? 'cartera_vencida_impuesto' :
                        selectedReporte === 'carteraVencidaDetalle' ? 'cartera_vencida_detalle' :
                        selectedReporte === 'carteraVencidaTitulo' ? 'cartera_vencida_por_titulo' :
                        selectedReporte;
-    
+
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `${reporteName}_${selectedYear}_${dateStr}.xlsx`;
 
-     try {
-      // 🔥 NUEVO: Usar asyncData si está disponible, sino getAllData
+    try {
+      // Si el job asíncrono ya generó los datos, usarlos directamente (más rápido)
+      // Si no, llamar al endpoint completo sin paginación
       if (asyncData.length > 0) {
         await exportWithFetch(() => Promise.resolve(asyncData), {
           filename,
@@ -145,12 +151,11 @@ export default function MyReporte() {
         });
       }
 
-      // 🔥 NUEVO: Marcar como descargado después de la exportación exitosa
       setReporteDescargado(true);
-      
+
     } catch (error) {
       console.error('Error al exportar:', error);
-      // No marcar como descargado si hay error
+      // No marcar como descargado si la exportación falló
     }
   };
 
@@ -173,14 +178,14 @@ export default function MyReporte() {
 
           
 
-          {/* MultiSelect de Títulos - Solo para carteraVencidaTitulo (se muestra primero) */}
+          {/* Selector de títulos - solo visible para carteraVencidaTitulo */}
           {selectedReporte === 'carteraVencidaTitulo' && (
             <div className="w-80">
               <MultiSelectTitulos
                 value={selectedTitulos}
-                 onChange={(selected) => {
+                onChange={(selected) => {
                   setSelectedTitulos(selected);
-                  setReporteDescargado(false); // 🔥 NUEVO: Resetear al cambiar títulos
+                  setReporteDescargado(false);
                 }}
                 placeholder="Seleccione títulos..."
                 maxSelection={4}
@@ -188,26 +193,28 @@ export default function MyReporte() {
             </div>
           )}
 
+          {/* Selector de tipo de filtro (Año / Rango) para todos los reportes disponibles */}
           {(selectedReporte === 'carteraVencida' || selectedReporte === 'carteraVencidaImpuesto' || selectedReporte === 'carteraVencidaTitulo' || selectedReporte === 'carteraVencidaDetalle') && (
             <div>
               <SelectAdmin
                 nombre={["Año", "Rango"]}
                 onChange={(v) => {
                   setSelectedTipo(v);
-                  setReporteDescargado(false); // 🔥 NUEVO: Resetear al cambiar tipo
+                  setReporteDescargado(false);
                 }}
                 value={selectedTipo}
               />
             </div>
           )}
 
+          {/* Selector de año - visible cuando el tipo de filtro es "Año" */}
           {(selectedTipo === 'Año') && (
             <div className="w-48">
               <YearSelect
                 value={selectedYear}
                 onChange={(y) => {
                   setSelectedYear(y);
-                  setReporteDescargado(false); // 🔥 NUEVO: Resetear al cambiar año
+                  setReporteDescargado(false);
                 }}
                 startYear={2000}
                 endYear={new Date().getFullYear()}
@@ -215,16 +222,17 @@ export default function MyReporte() {
             </div>
           )}
 
+          {/* Selector de rango de fechas - visible cuando el tipo de filtro es "Rango" */}
           {(selectedTipo === 'Rango') && (
              <div className="w-72">
                <SelectRango />
              </div>
           )}
 
-           {/* 🔥🔥🔥 AQUÍ VA EL NUEVO BOTÓN 🔥🔥🔥 */}
-          {/* Botón para generar reporte asíncrono */}
-          {(selectedReporte === 'carteraVencida' || 
-            selectedReporte === 'carteraVencidaImpuesto' || 
+          {/* Botón para iniciar la generación asíncrona del reporte (job Celery).
+              Solo disponible para reportes de gran volumen cuando hay año seleccionado. */}
+          {(selectedReporte === 'carteraVencida' ||
+            selectedReporte === 'carteraVencidaImpuesto' ||
             selectedReporte === 'carteraVencidaDetalle') && selectedYear && (
             <div className="md:ml-4">
               <button
@@ -240,7 +248,7 @@ export default function MyReporte() {
         </div>
       </div>
 
-      {/* Mostrar progreso si está generando */}
+      {/* Barra de progreso del job asíncrono - visible mientras se está generando */}
       {isGenerating && (
         <div className="mb-6">
           <ReportProgress
@@ -248,16 +256,17 @@ export default function MyReporte() {
             progress={progress}
             onCancel={cancelGeneration}
           />
-          </div>
+        </div>
       )}
-      {/* Mostrar error si hay */}
+
+      {/* Mensaje de error si el job asíncrono falló */}
       {asyncError && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
           <strong>Error:</strong> {asyncError}
         </div>
       )}
 
-      {/* 🔥 MODIFICADO: Mostrar botón de descarga cuando termine (usando useMemo) */}
+      {/* Botón de descarga Excel - aparece solo cuando el job terminó exitosamente y aún no se descargó */}
       {debeaMostrarBotonDescarga && (
         <div className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded-md fade-in">
           <p className="mb-2 font-medium">
@@ -283,7 +292,7 @@ export default function MyReporte() {
         </div>
       )}
 
-      {/* 🔥 NUEVO: Mostrar mensaje de éxito después de descargar */}
+      {/* Mensaje de confirmación tras descarga exitosa, con opción de generar otro reporte */}
       {reporteDescargado && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 rounded-md fade-in">
           <div className="flex items-start gap-3">
@@ -324,60 +333,9 @@ export default function MyReporte() {
         </div>
       )}
 
-      {/* Mostrar la tabla Server-Side - Solo para reportes que no sean cartera vencida ni cartera vencida impuesto */}
-      {consulted && selectedReporte !== 'carteraVencida' && selectedReporte !== 'carteraVencidaImpuesto' && (
-        <div className="mt-6 fade-in">
-          {/* Header con título y botón de exportar */}
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {selectedReporte === 'carteraVencidaTitulo' ? 'Cartera Vencida Título' : 'Reporte'}
-              <span className="ml-2 text-sm font-normal text-gray-500">
-                (Mostrando máximo 100 registros)
-              </span>
-            </h3>
-            
-            <button
-              type="button"
-              onClick={handleExcelExport}
-              disabled={exporting || loading || !selectedYear}
-              className={`inline-flex items-center gap-2 rounded px-4 py-2 text-sm font-medium transition-colors
-                ${exporting || loading || !selectedYear
-                  ? 'bg-gray-400 cursor-not-allowed text-gray-700' 
-                  : 'bg-green-600 hover:bg-green-700 text-white shadow-md'}`}
-              title={!selectedYear ? 'Debe seleccionar un año para descargar' : 'Descargar Excel completo'}
-            >
-              {exporting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                  Exportando...
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Descargar Excel (Todos)
-                </>
-              )}
-            </button>
-          </div>
-
-          <TablaServerSide<ReporteUnionResponse>
-            datos={data}
-            columnas={columns}
-            loading={loading}
-            totalRegistros={totalRecords}
-            onParamsChange={fetchReportData}
-            resetKey={refreshKey}
-            titulo=""
-          />
-        </div>
-      )}
-
-      {/* Sección especial para Cartera Vencida Impuesto - Solo descarga Excel (se muestra al seleccionar año) */}
+      {/* Sección de descarga para Cartera Vencida Impuesto
+          Este reporte solo está disponible como descarga directa Excel
+          debido al gran volumen de datos financieros que contiene */}
       {selectedReporte === 'carteraVencidaImpuesto' && selectedTipo === 'Año' && selectedYear && (
         <div className="mt-6 fade-in">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
@@ -432,7 +390,8 @@ export default function MyReporte() {
         </div>
       )}
 
-       {/* Sección especial para Cartera Vencida de ciu por detalle- Solo descarga Excel (se muestra al seleccionar año) */}
+      {/* Sección de descarga para Cartera Vencida CIU Detallado
+          Solo disponible como descarga Excel por el alto volumen de registros por ciudadano */}
       {selectedReporte === 'carteraVencidaDetalle' && selectedTipo === 'Año' && selectedYear  && (
         <div className="mt-6 fade-in">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
@@ -488,7 +447,9 @@ export default function MyReporte() {
       )}
 
 
-       {/* Sección especial para Cartera Vencida por titulo seleccionado- Solo descarga Excel (se muestra al seleccionar año y títulos) */}
+      {/* Sección de descarga para Cartera Vencida por Título
+          Muestra los títulos seleccionados y permite descargar el reporte filtrado en Excel
+          Solo visible cuando hay año, tipo "Año" y al menos un título seleccionado */}
         {selectedReporte === 'carteraVencidaTitulo' && selectedTitulos.length > 0 && selectedTipo === 'Año' && selectedYear && (
         <div className="mt-6 fade-in">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
