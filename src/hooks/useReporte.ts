@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import getReporteCV from '../components/actions/get-reporte-cv';
-import { ReporteResponse, ReporteUnionResponse, CarteraVencidaTitulo } from '../interfaces/reporte.response';
+import { ReporteUnionResponse, CarteraVencidaTitulo } from '../interfaces/reporte.response';
 
 export interface ReporteFilters {
   selectedReporte: string;
