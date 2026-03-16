@@ -10,6 +10,7 @@ import Home from "./pages/Dashboard/Home";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import MyReporte from "./pages/Reporte/MyReporte";
+import BienesInmuebles from "./pages/Reporte/BienesInmuebles";
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route index path="/" element={<Home />} />
           <Route path="/blank" element={<Blank />} />
           <Route path="/MyReporte" element={<MyReporte />} />
+          <Route path="/BienesInmuebles" element={<BienesInmuebles />} />
         </Route>
 
         {/* Ruta comodín: cualquier URL no reconocida muestra la página 404 */}

@@ -89,3 +89,25 @@ export interface AsyncJobStatusResponse {
 // Tipo unión que engloba todas las posibles estructuras de respuesta de reportes.
 // Usado en hooks y componentes que manejan múltiples tipos de reporte.
 export type ReporteUnionResponse = ReporteResponse | CarteraVencidaImpuestoResponse | CarteraVencidaTituloDetalleresponse;
+
+// Respuesta del endpoint /api/bienes_inmuebles/ - Bienes inmuebles declarados al SRI
+export interface BienesInmueblesResponse {
+    tipIdent:     string;  // Tipo de identificación (R/C/P)
+    idIdent:      string;  // RUC, cédula o pasaporte
+    razSoc:       string;  // Nombre completo o razón social
+    tipTrans:     string;  // Tipo de transacción (01-05, Tabla 2)
+    otroTipTrans: string;  // Solo si tipTrans='05'
+    porPropied:   string;  // Porcentaje de propiedad (ej: 100.00)
+    tipBien:      string;  // Tipo de bien inmueble (01-07, Tabla 3)
+    otroTipBien:  string;  // Solo si tipBien='07'
+    numPred:      string;  // Número de predio
+    clavCat:      string;  // Clave catastral
+    avalInm:      string;  // Avalúo del terreno
+    avalConst:    string;  // Avalúo área de construcción
+    arTotal:      string;  // Área total en m²
+    avalTotal:    string;  // Avalúo total del bien
+    prov:         string;  // Código provincia SRI (3 dígitos)
+    cant:         string;  // Código cantón SRI (5 dígitos)
+    parr:         string;  // Código parroquia SRI (7 dígitos)
+    dir:          string;  // Dirección del predio
+}

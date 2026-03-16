@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
     subItems: [
      // { name: "Prueba", path: "/blank", pro: false },
       { name: "Mis reportes", path: "/MyReporte", new: false },
+      { name: "Bienes Inmbuebles", path: "/BienesInmuebles", new: false },
     ],
   },
 ];
