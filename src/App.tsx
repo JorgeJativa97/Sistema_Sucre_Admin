@@ -11,6 +11,7 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import MyReporte from "./pages/Reporte/MyReporte";
 import BienesInmuebles from "./pages/Reporte/BienesInmuebles";
+import Comprobante from "./pages/Reporte/Comprobante";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/blank" element={<Blank />} />
           <Route path="/MyReporte" element={<MyReporte />} />
           <Route path="/BienesInmuebles" element={<BienesInmuebles />} />
+          <Route path="/Comprobante" element={<Comprobante />} />
         </Route>
 
         {/* Ruta comodín: cualquier URL no reconocida muestra la página 404 */}
