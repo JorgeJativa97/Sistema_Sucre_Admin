@@ -117,6 +117,7 @@ export default function MyReporte() {
       titulos = selectedTitulos.map(t => t.CODIGO);
     } else if (selectedReporte === 'carteraVencidaDetalle') {
       endpoint = '/api/ct_vencida_titulo_detalle';
+      datosEndpoint = '/api/ct_vencida_titulo_detalle/datos';
       useYearPath = true;
     }
 

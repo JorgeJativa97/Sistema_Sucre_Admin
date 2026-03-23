@@ -68,7 +68,7 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
     }
     //Realiza consulta a endpoint de reporte de ciu detallado
     else if (filters.selectedReporte === 'carteraVencidaDetalle') {
-      endpoint = '/api/ct_vencida_titulo_detalle';
+      endpoint = '/api/ct_vencida_titulo_detalle/datos';
       if (filters.selectedTipo === 'Año' && filters.selectedYear) {
         yearParam = filters.selectedYear;
         useYearPath = true;
