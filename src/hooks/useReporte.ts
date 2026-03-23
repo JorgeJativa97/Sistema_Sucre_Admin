@@ -53,7 +53,7 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
       }
     } 
     else if (filters.selectedReporte === 'carteraVencidaImpuesto') {
-      endpoint = '/api/ct_vencida_impuesto';
+      endpoint = '/api/ct_vencida_impuesto/datos';
       if (filters.selectedTipo === 'Año' && filters.selectedYear) {
         yearParam = filters.selectedYear;
         useYearPath = true;

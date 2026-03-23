@@ -101,18 +101,22 @@ export default function MyReporte() {
     let endpoint = '';
     let useYearPath = false;
 
+    let datosEndpoint = '/api/ct_vencida/datos';
+
     if (selectedReporte === 'carteraVencida') {
       endpoint = '/api/ct_vencida';
+      datosEndpoint = '/api/ct_vencida/datos';
       useYearPath = true;
     } else if (selectedReporte === 'carteraVencidaImpuesto') {
       endpoint = '/api/ct_vencida_impuesto';
+      datosEndpoint = '/api/ct_vencida_impuesto/datos';
       useYearPath = true;
     } else if (selectedReporte === 'carteraVencidaDetalle') {
       endpoint = '/api/ct_vencida_titulo_detalle';
       useYearPath = true;
     }
 
-    await generateReport(endpoint, selectedYear, useYearPath);
+    await generateReport(endpoint, selectedYear, useYearPath, datosEndpoint);
   };
 
   // Exporta los datos a un archivo Excel con nombre descriptivo.
@@ -329,63 +333,6 @@ export default function MyReporte() {
             <p className="text-yellow-800 dark:text-yellow-200 font-medium">
               Debe seleccionar un año para poder ejecutar el reporte
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Sección de descarga para Cartera Vencida Impuesto
-          Este reporte solo está disponible como descarga directa Excel
-          debido al gran volumen de datos financieros que contiene */}
-      {selectedReporte === 'carteraVencidaImpuesto' && selectedTipo === 'Año' && selectedYear && (
-        <div className="mt-6 fade-in">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
-            <div className="text-center">
-              <div className="mb-6">
-                <svg className="mx-auto h-16 w-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                Reporte de Cartera Vencida Impuesto
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                Debido al gran volumen de datos financieros en este reporte, la información está disponible únicamente para descarga directa en Excel.
-              </p>
-              
-              <button
-                type="button"
-                onClick={handleExcelExport}
-                disabled={exporting || loading || !selectedYear}
-                className={`inline-flex items-center gap-3 rounded-lg px-8 py-4 text-base font-medium transition-all transform hover:scale-105
-                  ${exporting || loading || !selectedYear
-                    ? 'bg-gray-400 cursor-not-allowed text-gray-700 scale-100' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'}`}
-                title={!selectedYear ? 'Debe seleccionar un año para descargar el reporte' : 'Descargar reporte completo de impuestos'}
-              >
-                {exporting ? (
-                  <>
-                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    Generando Excel...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Descargar Reporte Excel
-                  </>
-                )}
-              </button>
-              
-              {totalRecords > 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-                  Total de registros: {totalRecords.toLocaleString()}
-                </p>
-              )}
-            </div>
           </div>
         </div>
       )}

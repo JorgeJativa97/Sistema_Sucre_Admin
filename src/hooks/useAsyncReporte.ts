@@ -20,7 +20,7 @@ export interface UseAsyncReporteReturn {
   status: string;
   error: string | null;
   data: ReporteUnionResponse[];
-  generateReport: (endpoint: string, year: string | number, useYearPath?: boolean) => Promise<void>;
+  generateReport: (endpoint: string, year: string | number, useYearPath?: boolean, datosEndpoint?: string) => Promise<void>;
   cancelGeneration: () => void;
 }
 
@@ -37,6 +37,8 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
   const hasCompletedRef = useRef<boolean>(false);
   // Año guardado en ref para usarlo en getAsyncReporteData sin necesidad de estado
   const yearRef = useRef<string | number>('');
+  // Endpoint de datos guardado en ref para usarlo en getAsyncReporteData
+  const datosEndpointRef = useRef<string>('/api/ct_vencida/datos');
 
   // Detiene el polling y reinicia los estados al estado inicial
   const cancelGeneration = useCallback(() => {
@@ -74,7 +76,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
         }
 
         console.log('Reporte completado, obteniendo datos...');
-        const reportData = await getAsyncReporteData(yearRef.current);
+        const reportData = await getAsyncReporteData(yearRef.current, datosEndpointRef.current);
         console.log('Datos obtenidos:', reportData.length, 'registros');
 
         setData(reportData);
@@ -111,12 +113,14 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
   const generateReport = useCallback(async (
     endpoint: string,
     year: string | number,
-    useYearPath: boolean = true
+    useYearPath: boolean = true,
+    datosEndpoint: string = '/api/ct_vencida/datos'
   ) => {
     try {
       // Limpiar estado de ejecución anterior
       hasCompletedRef.current = false;
       yearRef.current = year;
+      datosEndpointRef.current = datosEndpoint;
 
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);
