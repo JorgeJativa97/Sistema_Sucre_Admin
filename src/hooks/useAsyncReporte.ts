@@ -20,7 +20,7 @@ export interface UseAsyncReporteReturn {
   status: string;
   error: string | null;
   data: ReporteUnionResponse[];
-  generateReport: (endpoint: string, year: string | number, useYearPath?: boolean, datosEndpoint?: string) => Promise<void>;
+  generateReport: (endpoint: string, year: string | number, useYearPath?: boolean, datosEndpoint?: string, titulos?: number[]) => Promise<void>;
   cancelGeneration: () => void;
 }
 
@@ -114,7 +114,8 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
     endpoint: string,
     year: string | number,
     useYearPath: boolean = true,
-    datosEndpoint: string = '/api/ct_vencida/datos'
+    datosEndpoint: string = '/api/ct_vencida/datos',
+    titulos?: number[]
   ) => {
     try {
       // Limpiar estado de ejecución anterior
@@ -135,7 +136,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
 
       console.log('Iniciando reporte:', endpoint, year);
 
-      const jobResponse = await startAsyncReporte(endpoint, year, useYearPath);
+      const jobResponse = await startAsyncReporte(endpoint, year, useYearPath, titulos);
 
       console.log('Job iniciado:', jobResponse.task_id, 'Status:', jobResponse.status);
 

@@ -91,7 +91,6 @@ export default function MyReporte() {
   };
 
   // Inicia la generación asíncrona del reporte en el backend (via Celery).
-  // Solo aplica para reportes de gran volumen: carteraVencida, carteraVencidaImpuesto, carteraVencidaDetalle.
   const handleGenerateAsyncReport = async () => {
     if (!selectedYear) {
       console.warn('No se puede generar sin seleccionar un año');
@@ -100,8 +99,8 @@ export default function MyReporte() {
 
     let endpoint = '';
     let useYearPath = false;
-
     let datosEndpoint = '/api/ct_vencida/datos';
+    let titulos: number[] | undefined = undefined;
 
     if (selectedReporte === 'carteraVencida') {
       endpoint = '/api/ct_vencida';
@@ -111,12 +110,17 @@ export default function MyReporte() {
       endpoint = '/api/ct_vencida_impuesto';
       datosEndpoint = '/api/ct_vencida_impuesto/datos';
       useYearPath = true;
+    } else if (selectedReporte === 'carteraVencidaTitulo') {
+      endpoint = '/api/ct_vencida_porimpuesto';
+      datosEndpoint = '/api/ct_vencida_porimpuesto/datos';
+      useYearPath = true;
+      titulos = selectedTitulos.map(t => t.CODIGO);
     } else if (selectedReporte === 'carteraVencidaDetalle') {
       endpoint = '/api/ct_vencida_titulo_detalle';
       useYearPath = true;
     }
 
-    await generateReport(endpoint, selectedYear, useYearPath, datosEndpoint);
+    await generateReport(endpoint, selectedYear, useYearPath, datosEndpoint, titulos);
   };
 
   // Exporta los datos a un archivo Excel con nombre descriptivo.
@@ -234,10 +238,11 @@ export default function MyReporte() {
           )}
 
           {/* Botón para iniciar la generación asíncrona del reporte (job Celery).
-              Solo disponible para reportes de gran volumen cuando hay año seleccionado. */}
+              Para carteraVencidaTitulo también requiere al menos un título seleccionado. */}
           {(selectedReporte === 'carteraVencida' ||
             selectedReporte === 'carteraVencidaImpuesto' ||
-            selectedReporte === 'carteraVencidaDetalle') && selectedYear && (
+            selectedReporte === 'carteraVencidaDetalle' ||
+            (selectedReporte === 'carteraVencidaTitulo' && selectedTitulos.length > 0)) && selectedYear && (
             <div className="md:ml-4">
               <button
                 onClick={handleGenerateAsyncReport}
@@ -394,72 +399,6 @@ export default function MyReporte() {
       )}
 
 
-      {/* Sección de descarga para Cartera Vencida por Título
-          Muestra los títulos seleccionados y permite descargar el reporte filtrado en Excel
-          Solo visible cuando hay año, tipo "Año" y al menos un título seleccionado */}
-        {selectedReporte === 'carteraVencidaTitulo' && selectedTitulos.length > 0 && selectedTipo === 'Año' && selectedYear && (
-        <div className="mt-6 fade-in">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
-            <div className="text-center">
-              <div className="mb-6">
-                <svg className="mx-auto h-16 w-16 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                Reporte de Cartera Vencida por Título
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
-                Títulos seleccionados: <span className="font-semibold text-purple-600">{selectedTitulos.length}</span>
-              </p>
-              <div className="mb-6 flex flex-wrap justify-center gap-2">
-                {selectedTitulos.map((titulo) => (
-                  <span key={titulo.CODIGO} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
-                    {titulo.DESCRIPCION}
-                  </span>
-                ))}
-              </div>
-              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                Debido al gran volumen de datos en este reporte, la información está disponible únicamente para descarga directa en Excel.
-              </p>
-              
-              <button
-                type="button"
-                onClick={handleExcelExport}
-                disabled={exporting || loading || !selectedYear || selectedTitulos.length === 0}
-                className={`inline-flex items-center gap-3 rounded-lg px-8 py-4 text-base font-medium transition-all transform hover:scale-105
-                  ${exporting || loading || !selectedYear || selectedTitulos.length === 0
-                    ? 'bg-gray-400 cursor-not-allowed text-gray-700 scale-100' 
-                    : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl'}`}
-                title={!selectedYear ? 'Debe seleccionar un año para descargar el reporte' : 'Descargar reporte por títulos seleccionados'}
-              >
-                {exporting ? (
-                  <>
-                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    Generando Excel...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Descargar Reporte Excel
-                  </>
-                )}
-              </button>
-              
-              {totalRecords > 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-                  Total de registros: {totalRecords.toLocaleString()}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

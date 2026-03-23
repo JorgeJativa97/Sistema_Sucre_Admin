@@ -22,7 +22,8 @@ const API_KEY = import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_TOKEN;
 export const startAsyncReporte = async (
   endpoint: string,
   year: string | number,
-  useYearPath: boolean = true
+  useYearPath: boolean = true,
+  titulos?: number[]
 ): Promise<AsyncJobResponse> => {
   try {
     const baseNoSlash = BASE_URL.replace(/\/$/, '');
@@ -30,11 +31,14 @@ export const startAsyncReporte = async (
     const yearSegment = useYearPath && year ? `/${String(year)}` : '';
     const url = `${baseNoSlash}${epWithSlash}${yearSegment}`;
 
+    const params: Record<string, string | number> = useYearPath ? {} : { year };
+    if (titulos && titulos.length > 0) params.codigos = titulos.join(',');
+
     const response = await axios.get<AsyncJobResponse>(url, {
       headers: {
         'x-api-key': API_KEY,
       },
-      params: useYearPath ? {} : { year },
+      params,
     });
 
     return response.data;

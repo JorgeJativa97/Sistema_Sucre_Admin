@@ -60,8 +60,7 @@ export function useReporte(filters: ReporteFilters): UseReporteReturn {
       }
     }
     else if (filters.selectedReporte === 'carteraVencidaTitulo') {
-      // Usar el endpoint de VITE_API_TITULOS para cartera vencida por título
-      endpoint = import.meta.env.VITE_API_TITULOS || '/api/ct_vencida_porimpuesto';
+      endpoint = '/api/ct_vencida_porimpuesto/datos';
       if (filters.selectedTipo === 'Año' && filters.selectedYear) {
         yearParam = filters.selectedYear;
         useYearPath = true;
