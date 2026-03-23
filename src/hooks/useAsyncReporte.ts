@@ -39,6 +39,8 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
   const yearRef = useRef<string | number>('');
   // Endpoint de datos guardado en ref para usarlo en getAsyncReporteData
   const datosEndpointRef = useRef<string>('/api/ct_vencida/datos');
+  // Títulos guardados en ref para reportes que requieren filtro por codigos
+  const titulosRef = useRef<number[] | undefined>(undefined);
 
   // Detiene el polling y reinicia los estados al estado inicial
   const cancelGeneration = useCallback(() => {
@@ -76,7 +78,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
         }
 
         console.log('Reporte completado, obteniendo datos...');
-        const reportData = await getAsyncReporteData(yearRef.current, datosEndpointRef.current);
+        const reportData = await getAsyncReporteData(yearRef.current, datosEndpointRef.current, titulosRef.current);
         console.log('Datos obtenidos:', reportData.length, 'registros');
 
         setData(reportData);
@@ -122,6 +124,7 @@ export function useAsyncReporte(): UseAsyncReporteReturn {
       hasCompletedRef.current = false;
       yearRef.current = year;
       datosEndpointRef.current = datosEndpoint;
+      titulosRef.current = titulos;
 
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);

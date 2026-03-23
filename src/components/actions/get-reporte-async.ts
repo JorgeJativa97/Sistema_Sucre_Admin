@@ -77,17 +77,22 @@ export const getAsyncReporteStatus = async (
  */
 export const getAsyncReporteData = async (
   year: string | number,
-  datosEndpoint: string = '/api/ct_vencida/datos'
+  datosEndpoint: string = '/api/ct_vencida/datos',
+  titulos?: number[]
 ): Promise<ReporteUnionResponse[]> => {
   try {
     const baseNoSlash = BASE_URL.replace(/\/$/, '');
     const epWithSlash = datosEndpoint.startsWith('/') ? datosEndpoint : `/${datosEndpoint}`;
     const url = `${baseNoSlash}${epWithSlash}/${year}/`;
 
+    const params: Record<string, string> = {};
+    if (titulos && titulos.length > 0) params.codigos = titulos.join(',');
+
     const response = await axios.get<ReporteUnionResponse[]>(url, {
       headers: {
         'x-api-key': API_KEY,
       },
+      params,
     });
 
     return response.data;
