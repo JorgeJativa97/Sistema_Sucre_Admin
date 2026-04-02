@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
       { name: "Mis reportes", path: "/MyReporte", new: false },
       { name: "Bienes Inmbuebles", path: "/BienesInmuebles", new: false },
       { name: "Comprobante",       path: "/Comprobante",     new: false },
+      { name: "Recaudación",       path: "/Recaudacion",     new: false },
     ],
   },
 ];
