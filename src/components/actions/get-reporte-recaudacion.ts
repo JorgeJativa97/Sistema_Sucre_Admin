@@ -18,9 +18,11 @@ const API_KEY = import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_TOKEN;
  */
 export const startRecaudacion = async (
   fechaInicio: string,
-  fechaFin: string
+  fechaFin: string,
+  endpoint: string = '/api/recaudacion/'
 ): Promise<AsyncJobResponse> => {
-  const url = `${BASE_URL}/api/recaudacion/`;
+  const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${BASE_URL.replace(/\/$/, '')}${ep}`;
 
   const response = await axios.get<AsyncJobResponse>(url, {
     headers: { 'x-api-key': API_KEY },
@@ -49,9 +51,11 @@ export const getRecaudacionStatus = async (taskId: string): Promise<AsyncJobStat
  */
 export const getRecaudacionDatos = async (
   fechaInicio: string,
-  fechaFin: string
+  fechaFin: string,
+  endpoint: string = '/api/recaudacion/datos/'
 ): Promise<RecaudacionResponse[]> => {
-  const url = `${BASE_URL}/api/recaudacion/datos/`;
+  const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${BASE_URL.replace(/\/$/, '')}${ep}`;
 
   const response = await axios.get<RecaudacionResponse[]>(url, {
     headers: { 'x-api-key': API_KEY },

@@ -1,22 +1,33 @@
 import { useState } from 'react';
-import{Calendar} from 'primereact/calendar';
+import { Calendar } from 'primereact/calendar';
 
-export default function SelectRango() {
+interface SelectRangoProps {
+  value?: (Date | null)[] | null;
+  onChange?: (dates: (Date | null)[] | null) => void;
+}
 
-    const [dates, setDates] = useState<(Date | null)[] | null | undefined>(null);
+export default function SelectRango({ value, onChange }: SelectRangoProps = {}) {
+  // Estado interno solo cuando no se pasa value desde el padre (uso no controlado)
+  const [internalDates, setInternalDates] = useState<(Date | null)[] | null | undefined>(null);
+
+  const isControlled = value !== undefined;
+  const currentValue = isControlled ? value : internalDates;
+
+  const handleChange = (dates: (Date | null)[] | null) => {
+    if (!isControlled) setInternalDates(dates);
+    onChange?.(dates);
+  };
 
   return (
     <div className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-sm text-gray-700">
       <Calendar
-        value={dates}
-        onChange={(e) => setDates(e.value)}
+        value={currentValue}
+        onChange={(e) => handleChange(e.value as (Date | null)[] | null)}
         selectionMode="range"
         readOnlyInput
         hideOnRangeSelection
         className="w-full"
-        //custimizo el input del calendario
         inputClassName="py-1.46 px-2 text-sm"
-        // style the overlay panel so the calendar popup has a solid background
         panelStyle={{
           backgroundColor: '#ffffff',
           border: '1px solid #e5e7eb',
@@ -26,5 +37,5 @@ export default function SelectRango() {
         }}
       />
     </div>
-  )
+  );
 }

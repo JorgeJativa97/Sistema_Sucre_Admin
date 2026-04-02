@@ -17,7 +17,7 @@ export interface UseRecaudacionReturn {
   status: string;
   error: string | null;
   data: RecaudacionResponse[];
-  generateReport: (fechaInicio: string, fechaFin: string) => Promise<void>;
+  generateReport: (fechaInicio: string, fechaFin: string, startEndpoint?: string, datosEndpoint?: string) => Promise<void>;
   cancelGeneration: () => void;
 }
 
@@ -32,6 +32,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
   const hasCompletedRef = useRef<boolean>(false);
   const fechaInicioRef = useRef<string>('');
   const fechaFinRef = useRef<string>('');
+  const datosEndpointRef = useRef<string>('/api/recaudacion/datos/');
 
   const cancelGeneration = useCallback(() => {
     if (intervalIdRef.current) {
@@ -60,7 +61,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
           intervalIdRef.current = null;
         }
 
-        const reportData = await getRecaudacionDatos(fechaInicioRef.current, fechaFinRef.current);
+        const reportData = await getRecaudacionDatos(fechaInicioRef.current, fechaFinRef.current, datosEndpointRef.current);
         setData(reportData);
         setIsGenerating(false);
 
@@ -85,11 +86,17 @@ export function useRecaudacion(): UseRecaudacionReturn {
     }
   }, []);
 
-  const generateReport = useCallback(async (fechaInicio: string, fechaFin: string) => {
+  const generateReport = useCallback(async (
+    fechaInicio: string,
+    fechaFin: string,
+    startEndpoint: string = '/api/recaudacion/',
+    datosEndpoint: string = '/api/recaudacion/datos/'
+  ) => {
     try {
       hasCompletedRef.current = false;
       fechaInicioRef.current = fechaInicio;
       fechaFinRef.current = fechaFin;
+      datosEndpointRef.current = datosEndpoint;
 
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);
@@ -102,7 +109,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
       setData([]);
       setStatus('PENDING');
 
-      const jobResponse = await startRecaudacion(fechaInicio, fechaFin);
+      const jobResponse = await startRecaudacion(fechaInicio, fechaFin, startEndpoint);
       setStatus(jobResponse.status);
 
       // Polling cada 2 segundos
