@@ -90,7 +90,7 @@ export interface AsyncJobStatusResponse {
 // Usado en hooks y componentes que manejan múltiples tipos de reporte.
 export type ReporteUnionResponse = ReporteResponse | CarteraVencidaImpuestoResponse | CarteraVencidaTituloDetalleresponse;
 
-// Respuesta del endpoint /api/recaudacion/datos/ - Reporte de recaudación por rango de fechas
+// Respuesta del endpoint /api/recaudacion/datos/ - Reporte de recaudación por impuesto
 export interface RecaudacionResponse {
   IMPUESTO:      string | null;
   EMISIONTITULO: number;
@@ -101,6 +101,12 @@ export interface RecaudacionResponse {
   IVA:           number;
   NRO_TITULOS:   number;
   TOTAL:         number;
+}
+
+// Respuesta del endpoint /api/recaudacion_rubro/datos/ - Reporte de recaudación por rubro
+export interface RecaudacionRubroResponse {
+  RUBRO: string | null;
+  TOTAL: number;
 }
 
 // Respuesta del endpoint /api/bienes_inmuebles/ - Bienes inmuebles declarados al SRI

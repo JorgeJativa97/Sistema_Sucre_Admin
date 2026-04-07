@@ -13,9 +13,8 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ReportProgress from "../../components/common/ReportProgress";
 import SelectorReporte from "../../components/common/SelectorReporte";
 import SelectRango from "../../components/common/SelectRango";
-import { useRecaudacion } from "../../hooks/useRecaudacion";
+import { useRecaudacion, RecaudacionUnionResponse } from "../../hooks/useRecaudacion";
 import { useExcelExport } from "../../hooks/useExcelExport";
-import { RecaudacionResponse } from "../../interfaces/reporte.response";
 
 // Mapeo de tipo de reporte → endpoint de inicio y datos
 const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string }> = {
@@ -24,12 +23,11 @@ const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: str
     datosEndpoint: '/api/recaudacion/datos/',
     label: 'recaudacion_impuesto',
   },
-  // Agregar nuevos tipos aquí cuando el backend esté listo:
-  // 'Recaudación por Rubro': {
-  //   startEndpoint: '/api/recaudacion_rubro/',
-  //   datosEndpoint: '/api/recaudacion_rubro/datos/',
-  //   label: 'recaudacion_rubro',
-  // },
+  'Recaudación por Rubro': {
+    startEndpoint: '/api/recaudacion_rubro/',
+    datosEndpoint: '/api/recaudacion_rubro/datos/',
+    label: 'recaudacion_rubro',
+  },
 };
 
 const TIPOS_REPORTE = Object.keys(REPORTE_CONFIG);
@@ -54,7 +52,7 @@ export default function Recaudacion() {
     cancelGeneration,
   } = useRecaudacion();
 
-  const { exporting, exportWithFetch } = useExcelExport<RecaudacionResponse>();
+  const { exporting, exportWithFetch } = useExcelExport<RecaudacionUnionResponse>();
 
   // Extrae las dos fechas del array del Calendar (rango completo = ambas seleccionadas)
   const fechaInicio = fechas?.[0] instanceof Date ? fechas[0] : null;

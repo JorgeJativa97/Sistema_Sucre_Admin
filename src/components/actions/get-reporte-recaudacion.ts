@@ -1,13 +1,14 @@
 // Funciones de acceso a la API para el reporte de recaudación (asíncrono via Celery).
 //
 // Flujo:
-//   1. startRecaudacion  → GET /api/recaudacion/?fecha_inicio=...&fecha_fin=... → devuelve task_id (202)
-//   2. getAsyncReporteStatus → GET /api/ct_vencida/status/<taskId>/ → reutiliza endpoint existente
+//   1. startRecaudacion      → GET /api/recaudacion/?fecha_inicio=...&fecha_fin=... → devuelve task_id (202)
+//   2. getRecaudacionStatus  → GET /api/status/<taskId>/                            → estado y progreso
 //   3. getRecaudacionDatos   → GET /api/recaudacion/datos/?fecha_inicio=...&fecha_fin=... → datos finales
 
 import axios from 'axios';
-import { AsyncJobResponse, AsyncJobStatusResponse } from '../../interfaces/reporte.response';
-import { RecaudacionResponse } from '../../interfaces/reporte.response';
+import { AsyncJobResponse, AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse } from '../../interfaces/reporte.response';
+
+export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse;
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_TOKEN;
@@ -34,10 +35,9 @@ export const startRecaudacion = async (
 
 /**
  * Consulta el estado de un job asíncrono de recaudación.
- * Reutiliza el endpoint de status de cartera vencida.
  */
 export const getRecaudacionStatus = async (taskId: string): Promise<AsyncJobStatusResponse> => {
-  const url = `${BASE_URL}/api/ct_vencida/status/${taskId}/`;
+  const url = `${BASE_URL}/api/status/${taskId}/`;
 
   const response = await axios.get<AsyncJobStatusResponse>(url, {
     headers: { 'x-api-key': API_KEY },
@@ -53,11 +53,11 @@ export const getRecaudacionDatos = async (
   fechaInicio: string,
   fechaFin: string,
   endpoint: string = '/api/recaudacion/datos/'
-): Promise<RecaudacionResponse[]> => {
+): Promise<RecaudacionUnionResponse[]> => {
   const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${BASE_URL.replace(/\/$/, '')}${ep}`;
 
-  const response = await axios.get<RecaudacionResponse[]>(url, {
+  const response = await axios.get<RecaudacionUnionResponse[]>(url, {
     headers: { 'x-api-key': API_KEY },
     params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
   });

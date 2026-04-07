@@ -2,21 +2,22 @@
 //
 // Flujo:
 //   1. generateReport(fechaInicio, fechaFin) → inicia el job en el backend
-//   2. Polling cada 2 segundos a /api/ct_vencida/status/<taskId>/
+//   2. Polling cada 2 segundos a /api/status/<taskId>/
 //   3. Al recibir SUCCESS → obtiene los datos desde /api/recaudacion/datos/
 //   4. Al recibir FAILURE → expone el error al componente
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { startRecaudacion, getRecaudacionStatus, getRecaudacionDatos } from '../components/actions/get-reporte-recaudacion';
-import { AsyncJobStatusResponse } from '../interfaces/reporte.response';
-import { RecaudacionResponse } from '../interfaces/reporte.response';
+import { AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse } from '../interfaces/reporte.response';
+
+export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse;
 
 export interface UseRecaudacionReturn {
   isGenerating: boolean;
   progress: number;
   status: string;
   error: string | null;
-  data: RecaudacionResponse[];
+  data: RecaudacionUnionResponse[];
   generateReport: (fechaInicio: string, fechaFin: string, startEndpoint?: string, datosEndpoint?: string) => Promise<void>;
   cancelGeneration: () => void;
 }
@@ -26,7 +27,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
   const [progress, setProgress] = useState<number>(0);
   const [status, setStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<RecaudacionResponse[]>([]);
+  const [data, setData] = useState<RecaudacionUnionResponse[]>([]);
 
   const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasCompletedRef = useRef<boolean>(false);

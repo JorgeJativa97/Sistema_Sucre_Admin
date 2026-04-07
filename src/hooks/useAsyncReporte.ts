@@ -2,13 +2,9 @@
 //
 // Flujo:
 //   1. generateReport() → llama al endpoint que inicia el job en el backend
-//   2. Polling cada 2 segundos a /api/ct_vencida/status/<taskId>/
-//   3. Al recibir SUCCESS → obtiene los datos desde /api/ct_vencida/datos/<year>/
+//   2. Polling cada 2 segundos a /api/status/<taskId>/
+//   3. Al recibir SUCCESS → obtiene los datos desde el endpoint de datos correspondiente
 //   4. Al recibir FAILURE → expone el error al componente
-//
-// Nota: el endpoint de datos está hardcodeado para ct_vencida en getAsyncReporteData.
-// Si en el futuro se necesita un endpoint de datos distinto por tipo de reporte,
-// se deberá parametrizar getAsyncReporteData.
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { startAsyncReporte, getAsyncReporteStatus, getAsyncReporteData } from '../components/actions/get-reporte-async';
