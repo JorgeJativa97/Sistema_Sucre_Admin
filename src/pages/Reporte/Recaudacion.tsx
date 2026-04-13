@@ -13,11 +13,12 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ReportProgress from "../../components/common/ReportProgress";
 import SelectorReporte from "../../components/common/SelectorReporte";
 import SelectRango from "../../components/common/SelectRango";
+import YearSelect from "../../components/common/YearSelect";
 import { useRecaudacion, RecaudacionUnionResponse } from "../../hooks/useRecaudacion";
 import { useExcelExport } from "../../hooks/useExcelExport";
 
 // Mapeo de tipo de reporte → endpoint de inicio y datos
-const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string }> = {
+const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string; requiresAnio?: boolean }> = {
   'Recaudación por Impuesto': {
     startEndpoint: '/api/recaudacion/',
     datosEndpoint: '/api/recaudacion/datos/',
@@ -27,6 +28,12 @@ const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: str
     startEndpoint: '/api/recaudacion_rubro/',
     datosEndpoint: '/api/recaudacion_rubro/datos/',
     label: 'recaudacion_rubro',
+  },
+  'Recaudación por Rubro por Año de Emisión': {
+    startEndpoint: '/api/recaudacion_rubro_anioemi/',
+    datosEndpoint: '/api/recaudacion_rubro_anio_emi/datos/',
+    label: 'recaudacion_rubro_anio_emi',
+    requiresAnio: true,
   },
 };
 
@@ -40,6 +47,7 @@ function toISODate(date: Date): string {
 export default function Recaudacion() {
   const [selectedReporte, setSelectedReporte] = useState<string>("");
   const [fechas, setFechas] = useState<(Date | null)[] | null>(null);
+  const [selectedAnio, setSelectedAnio] = useState<string>("");
   const [reporteDescargado, setReporteDescargado] = useState<boolean>(false);
 
   const {
@@ -57,7 +65,9 @@ export default function Recaudacion() {
   // Extrae las dos fechas del array del Calendar (rango completo = ambas seleccionadas)
   const fechaInicio = fechas?.[0] instanceof Date ? fechas[0] : null;
   const fechaFin    = fechas?.[1] instanceof Date ? fechas[1] : null;
-  const rangoValido = !!selectedReporte && !!fechaInicio && !!fechaFin;
+  const config      = REPORTE_CONFIG[selectedReporte];
+  const rangoValido = !!selectedReporte && !!fechaInicio && !!fechaFin &&
+                      (!config?.requiresAnio || !!selectedAnio);
 
   const mostrarBotonDescarga = useMemo(() => {
     return status === 'SUCCESS' && data.length > 0 && !reporteDescargado;
@@ -65,6 +75,7 @@ export default function Recaudacion() {
 
   const handleReporteChange = (v: string) => {
     setSelectedReporte(v);
+    setSelectedAnio("");
     cancelGeneration();
     setReporteDescargado(false);
   };
@@ -77,7 +88,6 @@ export default function Recaudacion() {
 
   const handleGenerar = async () => {
     if (!rangoValido) return;
-    const config = REPORTE_CONFIG[selectedReporte];
     if (!config) return;
 
     setReporteDescargado(false);
@@ -86,12 +96,12 @@ export default function Recaudacion() {
       toISODate(fechaFin!),
       config.startEndpoint,
       config.datosEndpoint,
+      config.requiresAnio ? selectedAnio : undefined,
     );
   };
 
   const handleExcelExport = async () => {
     if (!fechaInicio || !fechaFin) return;
-    const config = REPORTE_CONFIG[selectedReporte];
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `${config?.label ?? 'recaudacion'}_${toISODate(fechaInicio)}_${toISODate(fechaFin)}_${dateStr}.xlsx`;
 
@@ -134,6 +144,23 @@ export default function Recaudacion() {
               <SelectRango
                 value={fechas}
                 onChange={handleFechasChange}
+              />
+            </div>
+          )}
+
+          {/* Selector de año - solo para reportes que lo requieren */}
+          {config?.requiresAnio && (
+            <div className="w-40">
+              <YearSelect
+                value={selectedAnio}
+                onChange={(y) => {
+                  setSelectedAnio(y);
+                  cancelGeneration();
+                  setReporteDescargado(false);
+                }}
+                startYear={2000}
+                endYear={new Date().getFullYear()}
+                placeholder="-- Año --"
               />
             </div>
           )}
@@ -232,7 +259,9 @@ export default function Recaudacion() {
             <p className="text-yellow-800 dark:text-yellow-200 font-medium">
               {!selectedReporte
                 ? 'Seleccione el tipo de reporte'
-                : 'Seleccione el rango de fechas para continuar'}
+                : (!fechaInicio || !fechaFin)
+                ? 'Seleccione el rango de fechas para continuar'
+                : 'Seleccione el año de emisión para continuar'}
             </p>
           </div>
         </div>

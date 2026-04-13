@@ -109,6 +109,12 @@ export interface RecaudacionRubroResponse {
   TOTAL: number;
 }
 
+// Respuesta del endpoint /api/recaudacion_rubro_anio_emi/datos/ - Recaudación por rubro por año de emisión
+export interface RecaudacionRubroAnioEmiResponse {
+  RUBRO: string | null;
+  TOTAL: number;
+}
+
 // Respuesta del endpoint /api/bienes_inmuebles/ - Bienes inmuebles declarados al SRI
 export interface BienesInmueblesResponse {
     tipIdent:     string;  // Tipo de identificación (R/C/P)

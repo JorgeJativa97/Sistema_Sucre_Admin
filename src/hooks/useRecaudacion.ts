@@ -8,9 +8,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { startRecaudacion, getRecaudacionStatus, getRecaudacionDatos } from '../components/actions/get-reporte-recaudacion';
-import { AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse } from '../interfaces/reporte.response';
+import { AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse, RecaudacionRubroAnioEmiResponse } from '../interfaces/reporte.response';
 
-export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse;
+export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse | RecaudacionRubroAnioEmiResponse;
 
 export interface UseRecaudacionReturn {
   isGenerating: boolean;
@@ -18,7 +18,7 @@ export interface UseRecaudacionReturn {
   status: string;
   error: string | null;
   data: RecaudacionUnionResponse[];
-  generateReport: (fechaInicio: string, fechaFin: string, startEndpoint?: string, datosEndpoint?: string) => Promise<void>;
+  generateReport: (fechaInicio: string, fechaFin: string, startEndpoint?: string, datosEndpoint?: string, anio?: string) => Promise<void>;
   cancelGeneration: () => void;
 }
 
@@ -34,6 +34,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
   const fechaInicioRef = useRef<string>('');
   const fechaFinRef = useRef<string>('');
   const datosEndpointRef = useRef<string>('/api/recaudacion/datos/');
+  const anioRef = useRef<string | undefined>(undefined);
 
   const cancelGeneration = useCallback(() => {
     if (intervalIdRef.current) {
@@ -50,7 +51,12 @@ export function useRecaudacion(): UseRecaudacionReturn {
     if (hasCompletedRef.current) return;
 
     try {
-      const statusResponse: AsyncJobStatusResponse = await getRecaudacionStatus(taskId);
+      const statusResponse: AsyncJobStatusResponse = await getRecaudacionStatus(
+        taskId,
+        fechaInicioRef.current,
+        fechaFinRef.current,
+        anioRef.current
+      );
 
       setStatus(statusResponse.status);
       setProgress(statusResponse.progress || 0);
@@ -62,7 +68,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
           intervalIdRef.current = null;
         }
 
-        const reportData = await getRecaudacionDatos(fechaInicioRef.current, fechaFinRef.current, datosEndpointRef.current);
+        const reportData = await getRecaudacionDatos(fechaInicioRef.current, fechaFinRef.current, datosEndpointRef.current, anioRef.current);
         setData(reportData);
         setIsGenerating(false);
 
@@ -91,13 +97,15 @@ export function useRecaudacion(): UseRecaudacionReturn {
     fechaInicio: string,
     fechaFin: string,
     startEndpoint: string = '/api/recaudacion/',
-    datosEndpoint: string = '/api/recaudacion/datos/'
+    datosEndpoint: string = '/api/recaudacion/datos/',
+    anio?: string
   ) => {
     try {
       hasCompletedRef.current = false;
       fechaInicioRef.current = fechaInicio;
       fechaFinRef.current = fechaFin;
       datosEndpointRef.current = datosEndpoint;
+      anioRef.current = anio;
 
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);
@@ -110,7 +118,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
       setData([]);
       setStatus('PENDING');
 
-      const jobResponse = await startRecaudacion(fechaInicio, fechaFin, startEndpoint);
+      const jobResponse = await startRecaudacion(fechaInicio, fechaFin, startEndpoint, anio);
       setStatus(jobResponse.status);
 
       // Polling cada 2 segundos
