@@ -84,8 +84,6 @@ export default function Recaudacion() {
     return status === 'SUCCESS' && data.length > 0 && !reporteDescargado;
   }, [status, data.length, reporteDescargado]);
 
-  const sinResultados = status === 'SUCCESS' && data.length === 0 && !reporteDescargado;
-
   const handleReporteChange = (v: string) => {
     setSelectedReporte(v);
     setSelectedAnio("");
