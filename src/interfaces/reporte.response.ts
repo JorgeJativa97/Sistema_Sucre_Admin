@@ -115,6 +115,21 @@ export interface RecaudacionRubroAnioEmiResponse {
   TOTAL: number;
 }
 
+// Respuesta del endpoint /api/recaudacion_rubro_anio_emi_ids/datos/
+// Recaudación por rubro filtrada por año, rango de fechas e IDs de rubro (emi04codi)
+export interface RecaudacionRubroAnioEmiIdsResponse {
+  RUBRO: string | null;
+  TOTAL: number;
+}
+
+// Respuesta del endpoint /api/rubros/ - catálogo de rubros para el MultiSelect
+// EMI04CODI = ID del rubro, EMI04DESD = nombre del rubro, EMI03DES = nombre del impuesto padre
+export interface RubroOption {
+  EMI04CODI: number;
+  EMI04DESD: string;
+  EMI03DES: string;
+}
+
 // Respuesta del endpoint /api/bienes_inmuebles/ - Bienes inmuebles declarados al SRI
 export interface BienesInmueblesResponse {
     tipIdent:     string;  // Tipo de identificación (R/C/P)

@@ -6,9 +6,9 @@
 //   3. getRecaudacionDatos   → GET /api/recaudacion/datos/?fecha_inicio=...&fecha_fin=... → datos finales
 
 import axios from 'axios';
-import { AsyncJobResponse, AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse, RecaudacionRubroAnioEmiResponse } from '../../interfaces/reporte.response';
+import { AsyncJobResponse, AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse, RecaudacionRubroAnioEmiResponse, RecaudacionRubroAnioEmiIdsResponse } from '../../interfaces/reporte.response';
 
-export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse | RecaudacionRubroAnioEmiResponse;
+export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse | RecaudacionRubroAnioEmiResponse | RecaudacionRubroAnioEmiIdsResponse;
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_TOKEN;
@@ -21,13 +21,15 @@ export const startRecaudacion = async (
   fechaInicio: string,
   fechaFin: string,
   endpoint: string = '/api/recaudacion/',
-  anio?: string
+  anio?: string,
+  emi04codi?: string
 ): Promise<AsyncJobResponse> => {
   const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${BASE_URL.replace(/\/$/, '')}${ep}`;
 
   const params: Record<string, string> = { fecha_inicio: fechaInicio, fecha_fin: fechaFin };
   if (anio) params.year = anio;
+  if (emi04codi) params.emi04codi = emi04codi;
 
   const response = await axios.get<AsyncJobResponse>(url, {
     headers: { 'x-api-key': API_KEY },
@@ -67,13 +69,15 @@ export const getRecaudacionDatos = async (
   fechaInicio: string,
   fechaFin: string,
   endpoint: string = '/api/recaudacion/datos/',
-  anio?: string
+  anio?: string,
+  emi04codi?: string
 ): Promise<RecaudacionUnionResponse[]> => {
   const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${BASE_URL.replace(/\/$/, '')}${ep}`;
 
   const params: Record<string, string> = { fecha_inicio: fechaInicio, fecha_fin: fechaFin };
   if (anio) params.year = anio;
+  if (emi04codi) params.emi04codi = emi04codi;
 
   const response = await axios.get<RecaudacionUnionResponse[]>(url, {
     headers: { 'x-api-key': API_KEY },

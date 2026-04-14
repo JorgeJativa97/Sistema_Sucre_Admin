@@ -14,11 +14,13 @@ import ReportProgress from "../../components/common/ReportProgress";
 import SelectorReporte from "../../components/common/SelectorReporte";
 import SelectRango from "../../components/common/SelectRango";
 import YearSelect from "../../components/common/YearSelect";
+import MultiSelectRubros from "../../components/common/MultiSelectRubros";
 import { useRecaudacion, RecaudacionUnionResponse } from "../../hooks/useRecaudacion";
 import { useExcelExport } from "../../hooks/useExcelExport";
+import { RubroOption } from "../../interfaces/reporte.response";
 
 // Mapeo de tipo de reporte → endpoint de inicio y datos
-const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string; requiresAnio?: boolean }> = {
+const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string; requiresAnio?: boolean; requiresRubros?: boolean }> = {
   'Recaudación por Impuesto': {
     startEndpoint: '/api/recaudacion/',
     datosEndpoint: '/api/recaudacion/datos/',
@@ -35,6 +37,13 @@ const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: str
     label: 'recaudacion_rubro_anio_emi',
     requiresAnio: true,
   },
+  'Recaudación por Rubro por Año y Emisión (IDs)': {
+    startEndpoint: '/api/recaudacion_rubro_anio_emi_ids/',
+    datosEndpoint: '/api/recaudacion_rubro_anio_emi_ids/datos/',
+    label: 'recaudacion_rubro_anio_emi_ids',
+    requiresAnio: true,
+    requiresRubros: true,
+  },
 };
 
 const TIPOS_REPORTE = Object.keys(REPORTE_CONFIG);
@@ -48,6 +57,7 @@ export default function Recaudacion() {
   const [selectedReporte, setSelectedReporte] = useState<string>("");
   const [fechas, setFechas] = useState<(Date | null)[] | null>(null);
   const [selectedAnio, setSelectedAnio] = useState<string>("");
+  const [selectedRubros, setSelectedRubros] = useState<RubroOption[]>([]);
   const [reporteDescargado, setReporteDescargado] = useState<boolean>(false);
 
   const {
@@ -67,15 +77,19 @@ export default function Recaudacion() {
   const fechaFin    = fechas?.[1] instanceof Date ? fechas[1] : null;
   const config      = REPORTE_CONFIG[selectedReporte];
   const rangoValido = !!selectedReporte && !!fechaInicio && !!fechaFin &&
-                      (!config?.requiresAnio || !!selectedAnio);
+                      (!config?.requiresAnio || !!selectedAnio) &&
+                      (!config?.requiresRubros || selectedRubros.length > 0);
 
   const mostrarBotonDescarga = useMemo(() => {
     return status === 'SUCCESS' && data.length > 0 && !reporteDescargado;
   }, [status, data.length, reporteDescargado]);
 
+  const sinResultados = status === 'SUCCESS' && data.length === 0 && !reporteDescargado;
+
   const handleReporteChange = (v: string) => {
     setSelectedReporte(v);
     setSelectedAnio("");
+    setSelectedRubros([]);
     cancelGeneration();
     setReporteDescargado(false);
   };
@@ -91,12 +105,17 @@ export default function Recaudacion() {
     if (!config) return;
 
     setReporteDescargado(false);
+    const emi04codiCsv = config.requiresRubros
+      ? selectedRubros.map((r) => r.EMI04CODI).join(',')
+      : undefined;
+
     await generateReport(
       toISODate(fechaInicio!),
       toISODate(fechaFin!),
       config.startEndpoint,
       config.datosEndpoint,
       config.requiresAnio ? selectedAnio : undefined,
+      emi04codiCsv,
     );
   };
 
@@ -165,6 +184,20 @@ export default function Recaudacion() {
             </div>
           )}
 
+          {/* Multi-select de rubros - solo para reportes que lo requieren */}
+          {config?.requiresRubros && (
+            <div className="w-96">
+              <MultiSelectRubros
+                value={selectedRubros}
+                onChange={(rubros) => {
+                  setSelectedRubros(rubros);
+                  cancelGeneration();
+                  setReporteDescargado(false);
+                }}
+              />
+            </div>
+          )}
+
           {/* Botón generar */}
           {rangoValido && (
             <div className="md:ml-2">
@@ -196,6 +229,24 @@ export default function Recaudacion() {
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Aviso de 0 registros */}
+      {sinResultados && (
+        <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 text-orange-800 dark:text-orange-200 rounded-md">
+          <div className="flex items-start gap-3">
+            <svg className="h-6 w-6 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium">La consulta no devolvió registros</p>
+              <p className="text-sm mt-1">
+                El reporte se generó correctamente pero no se encontraron datos con los filtros seleccionados.
+                Prueba ampliando el rango de fechas, cambiando el año de emisión o seleccionando otros rubros.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -261,7 +312,11 @@ export default function Recaudacion() {
                 ? 'Seleccione el tipo de reporte'
                 : (!fechaInicio || !fechaFin)
                 ? 'Seleccione el rango de fechas para continuar'
-                : 'Seleccione el año de emisión para continuar'}
+                : (config?.requiresAnio && !selectedAnio)
+                ? 'Seleccione el año de emisión para continuar'
+                : (config?.requiresRubros && selectedRubros.length === 0)
+                ? 'Seleccione al menos un rubro para continuar'
+                : 'Complete los filtros para continuar'}
             </p>
           </div>
         </div>
