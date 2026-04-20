@@ -8,9 +8,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { startRecaudacion, getRecaudacionStatus, getRecaudacionDatos } from '../components/actions/get-reporte-recaudacion';
-import { AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse, RecaudacionRubroAnioEmiResponse, RecaudacionRubroAnioEmiIdsResponse } from '../interfaces/reporte.response';
+import { AsyncJobStatusResponse, RecaudacionResponse, RecaudacionRubroResponse, RecaudacionRubroAnioEmiResponse, RecaudacionRubroAnioEmiIdsResponse, RecaudacionFiltradoIdsResponse } from '../interfaces/reporte.response';
 
-export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse | RecaudacionRubroAnioEmiResponse | RecaudacionRubroAnioEmiIdsResponse;
+export type RecaudacionUnionResponse = RecaudacionResponse | RecaudacionRubroResponse | RecaudacionRubroAnioEmiResponse | RecaudacionRubroAnioEmiIdsResponse | RecaudacionFiltradoIdsResponse;
 
 export interface UseRecaudacionReturn {
   isGenerating: boolean;
@@ -18,7 +18,7 @@ export interface UseRecaudacionReturn {
   status: string;
   error: string | null;
   data: RecaudacionUnionResponse[];
-  generateReport: (fechaInicio: string, fechaFin: string, startEndpoint?: string, datosEndpoint?: string, anio?: string, emi04codi?: string) => Promise<void>;
+  generateReport: (fechaInicio: string, fechaFin: string, startEndpoint?: string, datosEndpoint?: string, anio?: string, emi04codi?: string, emi03codi?: string) => Promise<void>;
   cancelGeneration: () => void;
 }
 
@@ -36,6 +36,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
   const datosEndpointRef = useRef<string>('/api/recaudacion/datos/');
   const anioRef = useRef<string | undefined>(undefined);
   const emi04codiRef = useRef<string | undefined>(undefined);
+  const emi03codiRef = useRef<string | undefined>(undefined);
 
   const cancelGeneration = useCallback(() => {
     if (intervalIdRef.current) {
@@ -69,7 +70,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
           intervalIdRef.current = null;
         }
 
-        const reportData = await getRecaudacionDatos(fechaInicioRef.current, fechaFinRef.current, datosEndpointRef.current, anioRef.current, emi04codiRef.current);
+        const reportData = await getRecaudacionDatos(fechaInicioRef.current, fechaFinRef.current, datosEndpointRef.current, anioRef.current, emi04codiRef.current, emi03codiRef.current);
         setData(reportData);
         setIsGenerating(false);
 
@@ -100,7 +101,8 @@ export function useRecaudacion(): UseRecaudacionReturn {
     startEndpoint: string = '/api/recaudacion/',
     datosEndpoint: string = '/api/recaudacion/datos/',
     anio?: string,
-    emi04codi?: string
+    emi04codi?: string,
+    emi03codi?: string
   ) => {
     try {
       hasCompletedRef.current = false;
@@ -109,6 +111,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
       datosEndpointRef.current = datosEndpoint;
       anioRef.current = anio;
       emi04codiRef.current = emi04codi;
+      emi03codiRef.current = emi03codi;
 
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);
@@ -121,7 +124,7 @@ export function useRecaudacion(): UseRecaudacionReturn {
       setData([]);
       setStatus('PENDING');
 
-      const jobResponse = await startRecaudacion(fechaInicio, fechaFin, startEndpoint, anio, emi04codi);
+      const jobResponse = await startRecaudacion(fechaInicio, fechaFin, startEndpoint, anio, emi04codi, emi03codi);
       setStatus(jobResponse.status);
 
       // Polling cada 2 segundos

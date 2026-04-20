@@ -151,3 +151,25 @@ export interface BienesInmueblesResponse {
     parr:         string;  // Código parroquia SRI (7 dígitos)
     dir:          string;  // Dirección del predio
 }
+
+// Respuesta del endpoint /api/recaudacion_impuesto_filtro_emi_ids/datos/
+// Recaudación por impuesto filtrada por rango de fechas e IDs de impuesto (emi03codi)
+export interface RecaudacionFiltradoIdsResponse {
+  IMPUESTO:      string | null;
+  EMISIONTITULO: number;
+  INTERES:       number;
+  COACTIVA:      number;
+  DESCUENTO:     number;
+  RECARGO:       number;
+  IVA:           number;
+  NRO_TITULOS:   number;
+  TOTAL:         number;
+}
+
+// Respuesta del endpoint /api/IMPUESTO/ - catálogo de IMPUESTO para el MultiSelect
+// EMI03CODI = ID del IMPUESTO, EMI03DESD = nombre del impuesto, EMI03DES = nombre del impuesto padre
+export interface ImpuestoOption {
+  EMI03CODI: number;
+  EMI03DES: string;
+}
+

@@ -15,12 +15,13 @@ import SelectorReporte from "../../components/common/SelectorReporte";
 import SelectRango from "../../components/common/SelectRango";
 import YearSelect from "../../components/common/YearSelect";
 import MultiSelectRubros from "../../components/common/MultiSelectRubros";
+import MultiSelectImpuesto from "../../components/common/MultiSelectImpuesto";
 import { useRecaudacion, RecaudacionUnionResponse } from "../../hooks/useRecaudacion";
 import { useExcelExport } from "../../hooks/useExcelExport";
-import { RubroOption } from "../../interfaces/reporte.response";
+import { RubroOption, ImpuestoOption } from "../../interfaces/reporte.response";
 
 // Mapeo de tipo de reporte → endpoint de inicio y datos
-const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string; requiresAnio?: boolean; requiresRubros?: boolean }> = {
+const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: string; label: string; requiresAnio?: boolean; requiresRubros?: boolean; requiresImpuestos?: boolean }> = {
   'Recaudación por Impuesto': {
     startEndpoint: '/api/recaudacion/',
     datosEndpoint: '/api/recaudacion/datos/',
@@ -44,6 +45,12 @@ const REPORTE_CONFIG: Record<string, { startEndpoint: string; datosEndpoint: str
     requiresAnio: true,
     requiresRubros: true,
   },
+  'Recaudación por Impuesto (IDs)': {
+    startEndpoint: '/api/recaudacion_impuesto_filtro_emi_ids/',
+    datosEndpoint: '/api/recaudacion_impuesto_filtro_emi_ids/datos/',
+    label: 'recaudacion_impuesto_filtro_emi_ids',
+    requiresImpuestos: true,
+  },
 };
 
 const TIPOS_REPORTE = Object.keys(REPORTE_CONFIG);
@@ -58,6 +65,7 @@ export default function Recaudacion() {
   const [fechas, setFechas] = useState<(Date | null)[] | null>(null);
   const [selectedAnio, setSelectedAnio] = useState<string>("");
   const [selectedRubros, setSelectedRubros] = useState<RubroOption[]>([]);
+  const [selectedImpuestos, setSelectedImpuestos] = useState<ImpuestoOption[]>([]);
   const [reporteDescargado, setReporteDescargado] = useState<boolean>(false);
 
   const {
@@ -78,7 +86,8 @@ export default function Recaudacion() {
   const config      = REPORTE_CONFIG[selectedReporte];
   const rangoValido = !!selectedReporte && !!fechaInicio && !!fechaFin &&
                       (!config?.requiresAnio || !!selectedAnio) &&
-                      (!config?.requiresRubros || selectedRubros.length > 0);
+                      (!config?.requiresRubros || selectedRubros.length > 0) &&
+                      (!config?.requiresImpuestos || selectedImpuestos.length > 0);
 
   const mostrarBotonDescarga = useMemo(() => {
     return status === 'SUCCESS' && data.length > 0 && !reporteDescargado;
@@ -88,6 +97,7 @@ export default function Recaudacion() {
     setSelectedReporte(v);
     setSelectedAnio("");
     setSelectedRubros([]);
+    setSelectedImpuestos([]);
     cancelGeneration();
     setReporteDescargado(false);
   };
@@ -106,6 +116,9 @@ export default function Recaudacion() {
     const emi04codiCsv = config.requiresRubros
       ? selectedRubros.map((r) => r.EMI04CODI).join(',')
       : undefined;
+    const emi03codiCsv = config.requiresImpuestos
+      ? selectedImpuestos.map((i) => i.EMI03CODI).join(',')
+      : undefined;
 
     await generateReport(
       toISODate(fechaInicio!),
@@ -114,6 +127,7 @@ export default function Recaudacion() {
       config.datosEndpoint,
       config.requiresAnio ? selectedAnio : undefined,
       emi04codiCsv,
+      emi03codiCsv,
     );
   };
 
@@ -189,6 +203,20 @@ export default function Recaudacion() {
                 value={selectedRubros}
                 onChange={(rubros) => {
                   setSelectedRubros(rubros);
+                  cancelGeneration();
+                  setReporteDescargado(false);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Multi-select de impuestos - solo para reportes que lo requieren */}
+          {config?.requiresImpuestos && (
+            <div className="w-96">
+              <MultiSelectImpuesto
+                value={selectedImpuestos}
+                onChange={(impuestos) => {
+                  setSelectedImpuestos(impuestos);
                   cancelGeneration();
                   setReporteDescargado(false);
                 }}
@@ -296,6 +324,8 @@ export default function Recaudacion() {
                 ? 'Seleccione el año de emisión para continuar'
                 : (config?.requiresRubros && selectedRubros.length === 0)
                 ? 'Seleccione al menos un rubro para continuar'
+                : (config?.requiresImpuestos && selectedImpuestos.length === 0)
+                ? 'Seleccione al menos un impuesto para continuar'
                 : 'Complete los filtros para continuar'}
             </p>
           </div>
